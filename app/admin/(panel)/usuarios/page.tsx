@@ -54,7 +54,7 @@ export default async function UsuariosPage() {
         </tbody>
       </table>
       <p className="bo-nota">
-        Las cuentas de día uno (perfil «día uno») entran al back office. Mientras tanto la contraseña única de ADMIN_PASSWORD_HASH sigue sirviendo en /admin/login.
+        Las cuentas de día uno (perfil «día uno») entran al back office. Todos entran por /entrar. La contraseña única de respaldo (ADMIN_PASSWORD_HASH) sigue sirviendo en /admin/login.
       </p>
     </div>
   );

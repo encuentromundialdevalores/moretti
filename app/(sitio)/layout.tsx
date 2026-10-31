@@ -17,7 +17,7 @@ export default function SitioLayout({ children }: { children: React.ReactNode })
             <Link href="/#calc" className="hidden sm:inline">Cotiza tu depa</Link>
             <Link href="/#paquetes" className="hidden sm:inline">Paquetes</Link>
             <Link href="/#como" className="hidden sm:inline">Cómo funciona</Link>
-            <Link href="/admin/login" className="btn btn-bo">
+            <Link href="/entrar" className="btn btn-bo">
               <ContenidoBoton texto="Back office" />
             </Link>
             <Link href="/#registro" className="btn">

@@ -85,7 +85,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.json({ error: "Tu sesión expiró. Vuelve a entrar al back office." }, { status: 401 });
   }
   const url = req.nextUrl.clone();
-  url.pathname = "/admin/login";
+  url.pathname = "/entrar";
   url.search = "";
   url.searchParams.set("next", pathname);
   return NextResponse.redirect(url);

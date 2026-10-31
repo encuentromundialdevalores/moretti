@@ -4,14 +4,14 @@ import { useRouter } from "next/navigation";
 
 /**
  * Botón de cierre de sesión del back office.
- * Llama a POST /api/admin/logout y redirige a /admin/login.
+ * Llama a POST /api/admin/logout y redirige a /entrar.
  */
 export function BtnSalir() {
   const router = useRouter();
 
   async function salir() {
     await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/admin/login");
+    router.push("/entrar");
     router.refresh();
   }
 

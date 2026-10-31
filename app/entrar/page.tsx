@@ -23,7 +23,11 @@ export default function EntrarPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) return setError(data.error ?? "No se pudo entrar.");
-      router.push(data.destino);
+      // Si llegó aquí desde una página del back office (sesión vencida), vuelve a ella.
+      // Sólo rutas internas de /admin: «//otro-sitio.com» no es un destino.
+      const pedido = new URLSearchParams(window.location.search).get("next") ?? "";
+      const vuelta = data.destino === "/admin" && /^\/admin(\/[\w\-/[\]]*)?$/.test(pedido) ? pedido : data.destino;
+      router.push(vuelta);
       router.refresh();
     } catch {
       setError("No se pudo conectar. Intenta de nuevo.");
