@@ -104,3 +104,42 @@ export async function cambiarActivo(usuarioId: string, activo: boolean) {
     data: activo ? { activo } : { activo, invitacionHash: null, invitacionVence: null },
   });
 }
+
+/**
+ * Corrige nombre, correo, perfil o a quién está ligada la cuenta. Si cambia
+ * el perfil, la sesión abierta deja de servir (el portal compara el perfil
+ * de la cookie con el de la base en cada petición).
+ */
+export async function editarUsuario(
+  usuarioId: string,
+  params: { correo: string; nombre: string; rol: Rol; compradorId?: string | null; desarrolladorId?: string | null }
+) {
+  const correo = normalizarCorreo(params.correo);
+  const nombre = params.nombre.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) throw new ReglaError("El correo no es válido.");
+  if (!nombre) throw new ReglaError("Falta el nombre.");
+  if (params.rol === "COMPRADOR" && !params.compradorId)
+    throw new ReglaError("Un comprador tiene que estar ligado a su plan: elige el comprador.");
+  if (params.rol === "DESARROLLADOR" && !params.desarrolladorId)
+    throw new ReglaError("Una cuenta de desarrollador tiene que estar ligada a su desarrollador (p. ej. PISSA).");
+  const otro = await prisma.usuario.findUnique({ where: { correo } });
+  if (otro && otro.id !== usuarioId) throw new ReglaError("Ya hay otra cuenta con ese correo.");
+  return prisma.usuario.update({
+    where: { id: usuarioId },
+    data: {
+      correo,
+      nombre,
+      rol: params.rol,
+      compradorId: params.rol === "COMPRADOR" ? params.compradorId : null,
+      desarrolladorId: params.rol === "DESARROLLADOR" ? params.desarrolladorId : null,
+    },
+  });
+}
+
+/**
+ * Borra la cuenta. La bitácora no se toca: guarda el nombre de quien firmó
+ * cada cambio como texto, así que el historial sigue completo.
+ */
+export async function borrarUsuario(usuarioId: string) {
+  await prisma.usuario.delete({ where: { id: usuarioId } });
+}

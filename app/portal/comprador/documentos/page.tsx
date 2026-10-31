@@ -33,13 +33,15 @@ export default async function MisDocumentos() {
         ))}
       </div>
 
-      <Seccion titulo="Tus facturas" cuenta={comprobantes.length} nota="Una por cada pago">
+      <Seccion titulo="Tus facturas" cuenta={comprobantes.length} nota="Una por cada pago; la emite Moretti y aparece aquí">
         {comprobantes.length === 0 ? <Vacio>Cuando se haga tu primer cobro, aquí aparece su factura.</Vacio> : (
           <ul className="pt-pagos">
             {comprobantes.map((x) => (
               <li key={x.id} style={{ gridTemplateColumns: "minmax(0,1fr) auto auto" }}>
                 <span>Pago del {fechaCorta(x.fechaCobro)}{x.folioFiscal && <small className="font-mono">{x.folioFiscal}</small>}</span>
-                <span className={`chip ${x.folioFiscal ? "ok" : "wait"}`}>{x.folioFiscal ? "Lista" : "En proceso"}</span>
+                {x.xmlNombre
+                  ? <a href={`/api/portal/comprobantes/${x.id}/xml`} className="btn btn-sm btn-ghost">Descargar XML</a>
+                  : <span className={`chip ${x.folioFiscal ? "ok" : "wait"}`}>{x.folioFiscal ? "Emitida" : "En proceso"}</span>}
                 <span className="monto"><Money valor={Number(x.monto)} conCentavos /></span>
               </li>
             ))}

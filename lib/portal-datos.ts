@@ -134,7 +134,7 @@ export async function planDelComprador(compradorId: string) {
 export async function comprobantesDelPlan(planId: string) {
   return prisma.comprobanteFiscal.findMany({
     where: { planId },
-    select: { id: true, monto: true, fechaCobro: true, estado: true, folioFiscal: true },
+    select: { id: true, monto: true, fechaCobro: true, estado: true, folioFiscal: true, xmlNombre: true },
     orderBy: { fechaCobro: "asc" },
   });
 }

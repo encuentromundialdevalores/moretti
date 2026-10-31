@@ -7,7 +7,7 @@ import AccionesCuenta from "./AccionesCuenta";
 
 const fecha = (f: Date | null) => (f ? f.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }) : "—");
 
-/** Cuentas y roles (D-49): alta con liga de invitación, nueva liga, desactivar. */
+/** Cuentas y roles (D-49): alta con liga de invitación, editar, nueva liga, desactivar y borrar. */
 export default async function UsuariosPage() {
   await connection();
   const [usuarios, compradores, desarrolladores] = await Promise.all([
@@ -19,6 +19,7 @@ export default async function UsuariosPage() {
     prisma.desarrollador.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: "asc" } }),
   ]);
   const ahora = new Date();
+  const opcionesCompradores = compradores.map((c) => ({ id: c.id, texto: `${c.nombre} · ${c.unidad.torre} ${c.unidad.numero} · ${c.folio}` }));
   return (
     <div className="flex flex-col gap-8">
       <PageHead
@@ -26,10 +27,7 @@ export default async function UsuariosPage() {
         titulo="Cuentas y perfiles"
         descripcion="Cada quien entra en /entrar con su correo y ve sólo lo suyo. Al crear la cuenta te damos una liga de un solo uso para que la persona elija su contraseña; mándasela por correo o WhatsApp."
       />
-      <NuevaCuenta
-        compradores={compradores.map((c) => ({ id: c.id, texto: `${c.nombre} · ${c.unidad.torre} ${c.unidad.numero} · ${c.folio}` }))}
-        desarrolladores={desarrolladores}
-      />
+      <NuevaCuenta compradores={opcionesCompradores} desarrolladores={desarrolladores} />
       <table className="tbl">
         <thead><tr><th>Nombre</th><th>Perfil</th><th>Ligado a</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead>
         <tbody>
@@ -48,7 +46,7 @@ export default async function UsuariosPage() {
                 <td className="text-ink-2">{u.comprador ? `${u.comprador.nombre} · ${u.comprador.unidad.torre} ${u.comprador.unidad.numero}` : u.desarrollador?.nombre ?? "—"}</td>
                 <td>{estado}</td>
                 <td>{fecha(u.ultimoAcceso)}</td>
-                <td><AccionesCuenta id={u.id} activo={u.activo} /></td>
+                <td><AccionesCuenta cuenta={{ id: u.id, nombre: u.nombre, correo: u.correo, rol: u.rol, compradorId: u.compradorId, desarrolladorId: u.desarrolladorId }} activo={u.activo} compradores={opcionesCompradores} desarrolladores={desarrolladores} /></td>
               </tr>
             );
           })}

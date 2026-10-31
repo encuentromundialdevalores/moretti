@@ -496,6 +496,9 @@ model ComprobanteFiscal {
   estado      EstadoComprobante @default(PENDIENTE)
   /// El folio fiscal (UUID del CFDI) cuando se emite.
   folioFiscal String?
+  /// El XML del CFDI tal como lo subió quien lo emitió (para que el comprador lo descargue).
+  xml         String?           @db.Text
+  xmlNombre   String?
   emitidoEn   DateTime?
   createdAt   DateTime          @default(now())
 

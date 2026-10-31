@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { crearPasarelaFalsa } from "@/lib/pasarela/falsa";
 import { cobrarAnticipo, darDeAlta } from "@/lib/motor/planes";
 import { baseLimpiaConCatalogo, firmarContrato, paquete, unidadLibre } from "@/pruebas/utilidades";
-import { activarCuenta, autenticar, cambiarActivo, crearUsuario, generarInvitacion, VIGENCIA_INVITACION_MS } from "./cuentas";
+import { activarCuenta, autenticar, borrarUsuario, cambiarActivo, crearUsuario, editarUsuario, generarInvitacion, VIGENCIA_INVITACION_MS } from "./cuentas";
 import { unidadesParaDesarrollador, unidadesParaMoretti, unidadesParaVerificador } from "./portal-datos";
 
 const CONTRASENA = "una frase larga";
@@ -89,5 +89,23 @@ describe("Lo que lee cada perfil (D-48)", () => {
     const unidad = await unidadLibre("DEPA 2R (tipo 717)");
     await darDeAlta({ nombre: "Cotiza", contacto: "81", unidadId: unidad.id, paqueteId: (await paquete("casa-lista")).id });
     expect(await unidadesParaMoretti()).toEqual([]);
+  });
+});
+
+describe("Cuentas: editar y borrar", () => {
+  it("cambia datos y perfil; no deja repetir correo ni comprador sin plan", async () => {
+    const a = await crearUsuario({ correo: "a@x.mx", nombre: "Ana", rol: "VERIFICADOR" });
+    await crearUsuario({ correo: "b@x.mx", nombre: "Beto", rol: "MORETTI" });
+    await expect(editarUsuario(a.id, { correo: "B@x.mx", nombre: "Ana", rol: "VERIFICADOR" })).rejects.toThrow(/otra cuenta con ese correo/);
+    await expect(editarUsuario(a.id, { correo: "a@x.mx", nombre: "Ana", rol: "COMPRADOR" })).rejects.toThrow(/ligado a su plan/);
+    const e = await editarUsuario(a.id, { correo: " Ana@X.mx ", nombre: "Ana López", rol: "MORETTI" });
+    expect(e).toMatchObject({ correo: "ana@x.mx", nombre: "Ana López", rol: "MORETTI", compradorId: null });
+  });
+
+  it("una cuenta borrada ya no entra", async () => {
+    const u = await crearUsuario({ correo: "c@x.mx", nombre: "Caro", rol: "MORETTI" });
+    await activarCuenta(await generarInvitacion(u.id), CONTRASENA);
+    await borrarUsuario(u.id);
+    expect(await autenticar("c@x.mx", CONTRASENA)).toBeNull();
   });
 });
