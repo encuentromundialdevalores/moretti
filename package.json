@@ -12,7 +12,8 @@
     "db:usuarios-prueba": "tsx --env-file=.env scripts/usuarios-prueba.ts",
     "cobranza:barrido": "tsx --env-file=.env scripts/barrido-cobranza.ts",
     "test": "vitest run --project unitarias --project integracion",
-    "test:stripe": "vitest run --project stripe"
+    "test:stripe": "vitest run --project stripe",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
