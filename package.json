@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:paquetes-prueba": "tsx prisma/seed-paquetes-prueba.ts",
+    "db:usuarios-prueba": "tsx --env-file=.env scripts/usuarios-prueba.ts",
     "cobranza:barrido": "tsx --env-file=.env scripts/barrido-cobranza.ts",
     "test": "vitest run --project unitarias --project integracion",
     "test:stripe": "vitest run --project stripe"

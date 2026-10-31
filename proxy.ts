@@ -9,10 +9,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { COOKIE_NAME, verificarToken } from "@/lib/sesion";
+import { COOKIE_NAME, COOKIE_PORTAL, leerTokenPortal, verificarToken } from "@/lib/sesion";
+import { puedeVerRuta } from "@/lib/permisos";
+import type { Rol } from "@prisma/client";
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/:path*"],
+  matcher: ["/admin/:path*", "/api/:path*", "/portal/:path*", "/portal"],
 };
 
 const API_PUBLICA: { metodo: string; ruta: RegExp }[] = [
@@ -30,6 +32,9 @@ const API_PUBLICA: { metodo: string; ruta: RegExp }[] = [
   // Lo llama el cron, sin sesión; la ruta exige CRON_SECRET.
   { metodo: "GET", ruta: /^\/api\/cobranza\/barrido$/ },
   { metodo: "POST", ruta: /^\/api\/cobranza\/barrido$/ },
+  // Acceso con correo y contraseña, y la liga de invitación (D-49).
+  { metodo: "POST", ruta: /^\/api\/(entrar|salir)$/ },
+  { metodo: "POST", ruta: /^\/api\/cuenta\/activar$/ },
 ];
 
 const CAMBIA = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -53,6 +58,19 @@ export async function proxy(req: NextRequest) {
 
   if (esApi && CAMBIA.has(req.method) && !mismoOrigen(req)) {
     return NextResponse.json({ error: "Petición rechazada: viene de otro sitio." }, { status: 403 });
+  }
+
+  // Portal de comprador, Moretti, verificador y PISSA: su propia cookie.
+  // La página vuelve a revisar contra la base (cuenta activa, rol vigente).
+  const esApiPortal = pathname.startsWith("/api/portal/");
+  if (pathname === "/portal" || pathname.startsWith("/portal/") || esApiPortal) {
+    const s = await leerTokenPortal(req.cookies.get(COOKIE_PORTAL)?.value);
+    if (s && (esApiPortal || puedeVerRuta(s.rol as Rol, pathname))) return NextResponse.next();
+    if (esApiPortal) return NextResponse.json({ error: "Tu sesión expiró. Vuelve a entrar." }, { status: 401 });
+    const url = req.nextUrl.clone();
+    url.pathname = s ? "/portal" : "/entrar";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   const publica = esApi

@@ -666,3 +666,29 @@ la otra) · **Sustituida**.
 - **Pagos a Moretti:** cada proyecto se lee como cobrado − comisión = a
   transferir; autorizar pide el nombre y confirma el monto antes de enviar.
 - **Sin cambios de lógica:** mismas consultas, mismas rutas de API.
+
+## D-48 · Cinco perfiles, como en el «Tablero» de la maqueta (por ratificar)
+
+Comprador, Moretti, Verificador, PISSA y día uno. Cada uno con sus pantallas
+de la maqueta en `/portal/<perfil>`; día uno sigue en `/admin`. Los permisos
+en `lib/permisos.ts`; las consultas campo por campo en `lib/portal-datos.ts`
+para que precios, comisión y datos del comprador no lleguen a quien no debe.
+Detalle en `docs/usuarios-y-roles.md`.
+
+## D-49 · Cuentas con liga de invitación (por ratificar)
+
+día uno da de alta la cuenta en `/admin/usuarios` y recibe una liga de un solo
+uso (7 días) para que la persona elija su contraseña. Sólo se guarda el SHA-256
+de la liga. Cookie aparte para el portal. La contraseña única del back office
+sigue sirviendo. Hoy la liga se copia a mano: no hay envío de correos.
+
+## D-50 · Quién marca cada paso de obra (por ratificar)
+
+Moretti: En producción, Producido, En almacén, Instalada. Verificador:
+Levantamiento hecho, acta de entrega, Entregada. día uno: además, Acabados
+elegidos y Programada. Las reglas del motor (R5, R6, acta) siguen mandando.
+
+## D-51 · Cuentas de prueba (por ratificar)
+
+`npm run db:usuarios-prueba` crea una por perfil con la contraseña
+`prueba-dia-uno-2026`. No corre en producción.

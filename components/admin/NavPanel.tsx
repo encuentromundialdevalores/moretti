@@ -13,6 +13,7 @@ const ICONOS = {
   fiscal: "M6.5 3.5h8l3 3v14h-11zM14.5 3.5v3h3M9 11h6M9 14.5h6M9 18h3",
   proyectos: "M4.5 20V6.5L12 3l7.5 3.5V20M9 20v-5h6v5M9 9.5h.01M15 9.5h.01",
   paquetes: "M4 8l8-4 8 4-8 4-8-4zM4 8v8l8 4 8-4V8M12 12v8",
+  usuarios: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18.5 14.5c1.8.8 3 2.8 3 5.5",
 } as const;
 
 const ENLACES: { href: string; texto: string; icono: keyof typeof ICONOS; exacto?: boolean }[] = [
@@ -23,6 +24,7 @@ const ENLACES: { href: string; texto: string; icono: keyof typeof ICONOS; exacto
   { href: "/admin/pagos", texto: "Pagos", icono: "pagos" },
   { href: "/admin/transferencias", texto: "Pagos a Moretti", icono: "moretti" },
   { href: "/admin/fiscal", texto: "Fiscal", icono: "fiscal" },
+  { href: "/admin/usuarios", texto: "Usuarios", icono: "usuarios" },
 ];
 
 function Icono({ d }: { d: string }) {
