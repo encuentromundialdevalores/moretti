@@ -1,29 +1,40 @@
 import { connection } from "next/server";
-import { Encabezado } from "@/components/portal/Encabezado";
-import { ChipInstalacion, ChipOperativo, SinDatos } from "@/components/portal/Chips";
+import { Avance, Saludo, Seccion, Vacio } from "@/components/portal/Kit";
 import { compradorActual } from "@/components/portal/datos-comprador";
+import { queSigueParaComprador } from "@/lib/portal-etapas";
 
-/** Mi departamento: qué compró y en qué va (maqueta c-uni). */
+/** Mi departamento (maqueta c-uni): en qué paso va y qué compró. */
 export default async function MiDepartamento() {
   await connection();
   const { u, c, plan } = await compradorActual();
-  if (!c || !plan) return <><Encabezado rol={u.rol} titulo="Mi departamento" /><SinDatos>Todavía no hay un plan ligado a tu cuenta.</SinDatos></>;
+  if (!c || !plan) return <><Saludo nombre={u.nombre} titulo="Tu departamento" /><Vacio>Todavía no hay un plan ligado a tu cuenta.</Vacio></>;
+  const sigue = queSigueParaComprador(c.unidad.estadoOperativo, c.unidad.estadoInstalacion);
+  const cambiable = c.unidad.estadoOperativo === "PENDIENTE";
+
   return (
-    <div className="flex flex-col gap-8">
-      <Encabezado rol={u.rol} titulo={`${c.unidad.torre} ${c.unidad.numero}`} descripcion={`${c.unidad.proyecto.nombre} · Paquete ${plan.paquete.nombre} · ${plan.renglones.length} partidas`} />
-      <div className="flex flex-wrap gap-6">
-        <div><p className="label">Fabricación</p><p className="mt-1"><ChipOperativo estado={c.unidad.estadoOperativo} /></p></div>
-        <div><p className="label">Instalación</p><p className="mt-1"><ChipInstalacion estado={c.unidad.estadoInstalacion} /></p></div>
+    <div className="flex flex-col gap-9">
+      <Saludo nombre={u.nombre} titulo={`Tu departamento ${c.unidad.torre} ${c.unidad.numero}`}>
+        {c.unidad.proyecto.nombre} · Paquete {plan.paquete.nombre}
+      </Saludo>
+
+      <div className="pt-tarjeta">
+        <Avance op={c.unidad.estadoOperativo} ins={c.unidad.estadoInstalacion} grande />
+        <div>
+          <p className="text-[19px] font-semibold">{sigue.titulo}</p>
+          <p className="mt-1 text-[15px] text-ink-2">{sigue.texto}</p>
+        </div>
       </div>
-      <table className="tbl">
-        <thead><tr><th>Partida</th><th className="r">Cantidad</th><th>Acabado elegido</th></tr></thead>
-        <tbody>
+
+      <Seccion titulo="Lo que compraste" cuenta={plan.renglones.length} nota={cambiable ? "Puedes cambiar acabados hasta que se haga la medición." : "Ya se midió: así va a fabricación."}>
+        <ul className="pt-pagos">
           {plan.renglones.map((r, i) => (
-            <tr key={i}><td>{r.partida.nombre}</td><td className="r">{r.cantidad}</td><td>{r.acabado ?? "—"}</td></tr>
+            <li key={i} style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+              <span>{r.partida.nombre}{r.cantidad > 1 && <small>{r.cantidad} piezas</small>}</span>
+              <span className="text-[13.5px] text-ink-2">{r.acabado ?? "Acabado por elegir"}</span>
+            </li>
           ))}
-        </tbody>
-      </table>
-      <p className="bo-nota">El acabado lo elegiste al comprar; así va a producción. Se puede cambiar hasta el levantamiento.</p>
+        </ul>
+      </Seccion>
     </div>
   );
 }

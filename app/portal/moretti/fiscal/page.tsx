@@ -1,47 +1,73 @@
 import { connection } from "next/server";
 import { Money } from "@/components/ui";
-import { Encabezado } from "@/components/portal/Encabezado";
-import { Chip, SinDatos, fechaCorta } from "@/components/portal/Chips";
+import { Estado } from "@/components/admin/Bo";
+import { Fila, Lista, Saludo, Seccion } from "@/components/portal/Kit";
+import { fechaCorta } from "@/components/portal/Chips";
 import FolioForm from "@/components/portal/FolioForm";
 import { exigirRol } from "@/lib/portal";
 import { comprobantesParaMoretti } from "@/lib/portal-datos";
 import { diasParaVencer, urgenciaComprobante } from "@/lib/motor/fiscal";
 import { conceptoExhibicion } from "@/lib/motor/recalculo";
 
-/** Pendientes fiscales de Moretti (maqueta m-fisc): un renglón por cobro. */
+/** Facturas por subir (maqueta m-fisc): la fecha más próxima arriba y un renglón por cobro. */
 export default async function FiscalMoretti() {
   await connection();
   const u = await exigirRol("MORETTI");
   const pendientes = await comprobantesParaMoretti();
   const hoy = new Date();
+  const proxima = pendientes[0];
+  const dias = proxima ? diasParaVencer(proxima.fechaLimite, hoy) : 0;
+  const urg = proxima ? urgenciaComprobante(proxima.fechaLimite, hoy) : "a_tiempo";
+  const vencidas = pendientes.filter((c) => urgenciaComprobante(c.fechaLimite, hoy) === "vencido").length;
+
   return (
-    <div className="flex flex-col gap-8">
-      <Encabezado rol={u.rol} titulo="Pendientes fiscales" descripcion="Cobro por cobro, con su fecha límite de ley: el día 5 del mes siguiente. El XML se sube junto al pago que le toca." />
-      {pendientes.length === 0 ? <SinDatos>No tienes pendientes fiscales. ✓</SinDatos> : (
-        <table className="tbl">
-          <thead><tr><th>Unidad</th><th>Cobro</th><th className="r">Monto</th><th>Fecha límite</th><th>Complemento</th></tr></thead>
-          <tbody>
+    <div className="flex flex-col gap-9">
+      <Saludo nombre={u.nombre} titulo="Facturas por subir">Cada cobro necesita su factura a más tardar el día 5 del mes siguiente. Pega el folio o sube el XML.</Saludo>
+
+      {!proxima ? (
+        <Estado tipo="ok" titulo="Estás al día">No tienes facturas pendientes.</Estado>
+      ) : (
+        <div className="bo-card bo-limite">
+          <div className={`bo-limite-dias ${urg === "vencido" ? "late" : urg === "por_vencer" ? "warn" : ""}`}>
+            <b>{Math.abs(dias)}</b><span>{urg === "vencido" ? "días tarde" : dias === 1 ? "día" : "días"}</span>
+          </div>
+          <div>
+            <h3>{pendientes.length} {pendientes.length === 1 ? "factura pendiente" : "facturas pendientes"}</h3>
+            <p>{vencidas > 0 ? `${vencidas} ya pasaron su fecha. ` : ""}La más próxima vence el {fechaCorta(proxima.fechaLimite)}.</p>
+          </div>
+        </div>
+      )}
+
+      {pendientes.length > 0 && (
+        <Seccion titulo="Pendientes" cuenta={pendientes.length} nota="La más urgente primero">
+          <Lista>
             {pendientes.map((c) => {
               const un = c.pago.plan.comprador.unidad;
-              const urg = urgenciaComprobante(c.fechaLimite, hoy);
               const d = diasParaVencer(c.fechaLimite, hoy);
+              const ur = urgenciaComprobante(c.fechaLimite, hoy);
               return (
-                <tr key={c.id}>
-                  <td>{un.torre} {un.numero}</td>
-                  <td>{conceptoExhibicion(c.pago.exhibicion.numero, c.pago.exhibicion.tipo)}<br /><span className="text-[12.5px] text-muted">{fechaCorta(c.fechaCobro)}</span></td>
-                  <td className="r"><Money valor={Number(c.monto)} conCentavos /></td>
-                  <td>
-                    {fechaCorta(c.fechaLimite)}<br />
-                    <Chip texto={urg === "vencido" ? `Vencido hace ${-d} d` : d === 0 ? "Vence hoy" : `En ${d} d`} clase={urg === "vencido" ? "late" : urg === "por_vencer" ? "warn" : "wait"} />
-                  </td>
-                  <td><FolioForm id={c.id} /></td>
-                </tr>
+                <Fila
+                  key={c.id}
+                  unidad={`${un.torre} ${un.numero}`}
+                  detalle={`${conceptoExhibicion(c.pago.exhibicion.numero, c.pago.exhibicion.tipo)} · ${fechaCorta(c.fechaCobro)}`}
+                  medio={
+                    <span className="flex flex-wrap items-center gap-3">
+                      <b className="text-[16px] text-ink"><Money valor={Number(c.monto)} conCentavos /></b>
+                      <span className={`chip ${ur === "vencido" ? "late" : ur === "por_vencer" ? "warn" : "wait"}`}>
+                        {ur === "vencido" ? `Venció hace ${-d} d` : d === 0 ? "Vence hoy" : `Vence en ${d} d`}
+                      </span>
+                    </span>
+                  }
+                >
+                  <FolioForm id={c.id} />
+                </Fila>
               );
             })}
-          </tbody>
-        </table>
+          </Lista>
+        </Seccion>
       )}
-      <p className="bo-nota">Por ahora se revisa que el folio tenga forma de UUID; la verificación contra el SAT queda pendiente.</p>
+
+      <p className="bo-nota">Por ahora se revisa que el folio tenga forma correcta; la verificación contra el SAT queda pendiente.</p>
     </div>
   );
 }

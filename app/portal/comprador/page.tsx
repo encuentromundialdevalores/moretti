@@ -1,49 +1,77 @@
 import { connection } from "next/server";
-import { Money, CintaExhibiciones, ChipEstadoPlan } from "@/components/ui";
-import { Encabezado } from "@/components/portal/Encabezado";
-import { ChipExhibicion, SinDatos, fechaCorta } from "@/components/portal/Chips";
+import { Money } from "@/components/ui";
+import { Estado } from "@/components/admin/Bo";
+import { Saludo, Seccion, Vacio } from "@/components/portal/Kit";
+import { fechaCorta } from "@/components/portal/Chips";
 import { compradorActual } from "@/components/portal/datos-comprador";
 import { conceptoExhibicion } from "@/lib/motor/recalculo";
 
-/** Mi plan de pagos (maqueta c-plan). */
+/** Mi plan de pagos (maqueta c-plan): el siguiente cargo en grande y la lista completa. */
 export default async function MiPlan() {
   await connection();
   const { u, c, plan } = await compradorActual();
-  if (!c || !plan) return <><Encabezado rol={u.rol} titulo="Mi plan de pagos" /><SinDatos>Todavía no hay un plan ligado a tu cuenta.</SinDatos></>;
+  if (!c || !plan) return <><Saludo nombre={u.nombre} titulo="Tu plan de pagos" /><Vacio>Todavía no hay un plan ligado a tu cuenta. Escríbele a día uno.</Vacio></>;
+
+  const total = plan.exhibiciones.length;
   const pagadas = plan.exhibiciones.filter((e) => e.estado === "PAGADA").length;
+  const vencidas = plan.exhibiciones.filter((e) => e.estado === "VENCIDA");
   const proxima = plan.exhibiciones.find((e) => e.estado === "PENDIENTE" || e.estado === "VENCIDA");
+  const pct = total ? Math.round((pagadas / total) * 100) : 0;
+
   return (
-    <div className="flex flex-col gap-8">
-      <Encabezado
-        rol={u.rol}
-        titulo="Mi plan de pagos"
-        descripcion={`${c.unidad.proyecto.nombre} · ${c.unidad.torre} ${c.unidad.numero} · Paquete ${plan.paquete.nombre}`}
-      />
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="kpi"><p className="label">Pagado</p><p className="figure mt-1 text-[24px]">{pagadas} de {plan.exhibiciones.length}</p></div>
-        <div className="kpi"><p className="label">Saldo</p><p className="figure mt-1 text-[24px]"><Money valor={Number(plan.saldo)} /></p></div>
-        <div className="kpi">
-          <p className="label">Próximo cargo</p>
-          <p className="figure mt-1 text-[24px]">{proxima ? fechaCorta(proxima.fechaProgramada) : "—"}</p>
-          {c.tarjetaDescripcion && <p className="mt-1 text-[13px] text-muted">a tu {c.tarjetaDescripcion}</p>}
+    <div className="flex flex-col gap-9">
+      <Saludo nombre={u.nombre} titulo="Tu plan de pagos">
+        {c.unidad.proyecto.nombre} · {c.unidad.torre} {c.unidad.numero} · Paquete {plan.paquete.nombre}
+      </Saludo>
+
+      {plan.estado === "LIQUIDADO" ? (
+        <Estado tipo="ok" titulo="¡Terminaste de pagar!">Tu equipamiento ya puede pasar a fabricación.</Estado>
+      ) : vencidas.length > 0 ? (
+        <Estado tipo="aviso" titulo={vencidas.length === 1 ? "Tienes un pago sin cubrir" : `Tienes ${vencidas.length} pagos sin cubrir`}>
+          Revisa que tu tarjeta tenga fondos o escríbele a día uno. Mientras tanto tu obra se pone en pausa.
+        </Estado>
+      ) : (
+        <Estado tipo="ok" titulo="Vas al corriente">No tienes que hacer nada: cada pago se cobra solo a tu tarjeta en su fecha.</Estado>
+      )}
+
+      <div className="pt-pago">
+        <div className="principal">
+          <p className="bo-k">{proxima ? "Tu siguiente pago" : "Pagos"}</p>
+          {proxima ? (
+            <>
+              <p className="monto"><Money valor={Number(proxima.monto)} conCentavos /></p>
+              <p className="cuando">
+                {fechaCorta(proxima.fechaProgramada)}{c.tarjetaDescripcion && <> · a tu {c.tarjetaDescripcion}</>}
+              </p>
+            </>
+          ) : (
+            <p className="monto">Completo</p>
+          )}
+        </div>
+        <div>
+          <p className="bo-k">Llevas pagado</p>
+          <p className="mt-2 text-[26px] font-semibold">{pagadas} de {total} pagos</p>
+          <div className="pt-progreso" aria-hidden="true"><i style={{ width: `${pct}%` }} /></div>
+          <p className="mt-3 text-[14px] text-ink-2">Te falta <b className="text-ink"><Money valor={Number(plan.saldo)} /></b></p>
         </div>
       </div>
-      <div className="flex items-center gap-3"><ChipEstadoPlan estado={plan.estado} /></div>
-      <CintaExhibiciones exhibiciones={plan.exhibiciones} />
-      <table className="tbl">
-        <thead><tr><th>Pago</th><th>Fecha</th><th className="r">Monto</th><th>Estado</th></tr></thead>
-        <tbody>
-          {plan.exhibiciones.map((e) => (
-            <tr key={e.id}>
-              <td>{conceptoExhibicion(e.numero, e.tipo)}</td>
-              <td>{fechaCorta(e.fechaProgramada)}</td>
-              <td className="r"><Money valor={Number(e.monto)} conCentavos /></td>
-              <td><ChipExhibicion estado={e.estado} /></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="bo-nota">Ves tu saldo y tus fechas sin llamarle a nadie. El cargo se hace solo a tu tarjeta en cada fecha.</p>
+
+      <Seccion titulo="Todos tus pagos" nota="Del primero al último">
+        <ul className="pt-pagos">
+          {plan.exhibiciones.map((e) => {
+            const pagado = e.estado === "PAGADA";
+            const vencido = e.estado === "VENCIDA";
+            return (
+              <li key={e.id} data-pagado={pagado || undefined}>
+                <span className={`pt-punto ${pagado ? "ok" : vencido ? "late" : ""}`} aria-hidden="true" />
+                <span>{conceptoExhibicion(e.numero, e.tipo)}<small>{fechaCorta(e.fechaProgramada)}</small></span>
+                <span className={`chip ${pagado ? "ok" : vencido ? "late" : "wait"}`}>{pagado ? "Pagado" : vencido ? "Sin cubrir" : "Programado"}</span>
+                <span className="monto"><Money valor={Number(e.monto)} conCentavos /></span>
+              </li>
+            );
+          })}
+        </ul>
+      </Seccion>
     </div>
   );
 }

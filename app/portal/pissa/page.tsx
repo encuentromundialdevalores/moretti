@@ -1,36 +1,48 @@
 import { connection } from "next/server";
-import { Encabezado } from "@/components/portal/Encabezado";
-import { Chip, SinDatos } from "@/components/portal/Chips";
+import { Avance, Fila, Lista, Saludo, Seccion, Vacio } from "@/components/portal/Kit";
 import { exigirRol } from "@/lib/portal";
 import { unidadesParaDesarrollador } from "@/lib/portal-datos";
 import { comoVaParaDesarrollador } from "@/lib/permisos";
 
-/** Unidades vendidas (maqueta p-unid). Sólo las de su desarrollador, sin precios ni comprador. */
+/** Unidades vendidas (maqueta p-unid): cuántas, cómo van y por desarrollo. Sin precios ni comprador. */
 export default async function UnidadesPissa() {
   await connection();
   const u = await exigirRol("DESARROLLADOR");
   const unidades = u.desarrolladorId ? await unidadesParaDesarrollador(u.desarrolladorId) : [];
+  const como = unidades.map((x) => comoVaParaDesarrollador(x.estadoOperativo, x.estadoInstalacion));
+  const entregadas = como.filter((c) => c === "Entregada").length;
+  const proyectos = [...new Set(unidades.map((x) => x.proyecto.nombre))];
+
   return (
-    <div className="flex flex-col gap-8">
-      <Encabezado rol={u.rol} titulo="Unidades vendidas" descripcion="Cuáles de tus unidades llevan paquete y cómo van. Te sirve saber que tus clientes van a recibir su depa terminado, no cuánto pagaron." />
-      {unidades.length === 0 ? <SinDatos>Todavía no hay unidades con paquete.</SinDatos> : (
-        <table className="tbl">
-          <thead><tr><th>Desarrollo</th><th>Torre</th><th>Unidad</th><th>Paquete</th><th>Cómo va</th></tr></thead>
-          <tbody>
-            {unidades.map((x) => {
-              const v = comoVaParaDesarrollador(x.estadoOperativo, x.estadoInstalacion);
-              return (
-                <tr key={x.id}>
-                  <td>{x.proyecto.nombre}</td><td>{x.torre}</td><td>{x.numero}</td>
-                  <td>{x.comprador?.planes[0]?.paquete.nombre ?? "—"}</td>
-                  <td><Chip texto={v} clase={v === "Por arrancar" ? "wait" : v === "En proceso" ? "info" : "ok"} /></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+    <div className="flex flex-col gap-9">
+      <Saludo nombre={u.nombre} titulo="Tus unidades con paquete">Tus clientes van a recibir su departamento equipado. Aquí ves cómo va cada uno; tú sigues entregando en obra blanca.</Saludo>
+
+      {unidades.length === 0 ? <Vacio>Todavía no hay unidades con paquete.</Vacio> : (
+        <>
+          <div className="pt-numeros">
+            <div className="pt-numero" data-destacado><p className="bo-k">Con paquete</p><b>{unidades.length}</b></div>
+            <div className="pt-numero"><p className="bo-k">En camino</p><b>{unidades.length - entregadas}</b></div>
+            <div className="pt-numero"><p className="bo-k">Entregadas</p><b>{entregadas}</b></div>
+          </div>
+
+          {proyectos.map((p) => {
+            const deP = unidades.filter((x) => x.proyecto.nombre === p);
+            return (
+              <Seccion key={p} titulo={p} cuenta={deP.length}>
+                <Lista>
+                  {deP.map((x) => (
+                    <Fila key={x.id} unidad={`${x.torre} ${x.numero}`} detalle={`Paquete ${x.comprador?.planes[0]?.paquete.nombre ?? "—"}`} medio={<Avance op={x.estadoOperativo} ins={x.estadoInstalacion} />}>
+                      <span className={`chip ${comoVaParaDesarrollador(x.estadoOperativo, x.estadoInstalacion) === "Entregada" ? "ok" : "info"}`}>{comoVaParaDesarrollador(x.estadoOperativo, x.estadoInstalacion)}</span>
+                    </Fila>
+                  ))}
+                </Lista>
+              </Seccion>
+            );
+          })}
+        </>
       )}
-      <p className="bo-nota">PISSA no cobra, no factura el equipamiento, no instala y no responde por la garantía. Sigue entregando en obra blanca, como hoy.</p>
+
+      <p className="bo-nota">PISSA no cobra, no factura, no instala y no responde por la garantía del equipamiento.</p>
     </div>
   );
 }

@@ -1,45 +1,68 @@
 import { connection } from "next/server";
-import { Encabezado } from "@/components/portal/Encabezado";
-import { Chip, ChipInstalacion, SinDatos, fechaCorta } from "@/components/portal/Chips";
+import { Estado } from "@/components/admin/Bo";
+import { Fila, Lista, Saludo, Seccion } from "@/components/portal/Kit";
+import { fechaCorta } from "@/components/portal/Chips";
 import BotonAvance from "@/components/portal/BotonAvance";
 import ActaForm from "@/components/portal/ActaForm";
 import { exigirRol } from "@/lib/portal";
 import { unidadesParaVerificador } from "@/lib/portal-datos";
 
-/** Instalaciones por recibir (maqueta o-inst): partidas a revisar y el acta. */
+/**
+ * Por recibir (maqueta o-inst): lo instalado, con la lista de piezas a revisar
+ * y el acta. Primero el acta, luego «entregada».
+ */
 export default async function Instalaciones() {
   await connection();
   const u = await exigirRol("VERIFICADOR");
-  const unidades = (await unidadesParaVerificador()).filter((x) => x.estadoInstalacion !== "NO_PROGRAMADA");
+  const unidades = await unidadesParaVerificador();
+  const porRecibir = unidades.filter((x) => x.estadoInstalacion === "INSTALADA");
+  const programadas = unidades.filter((x) => x.estadoInstalacion === "PROGRAMADA");
+  const entregadas = unidades.filter((x) => x.estadoInstalacion === "ENTREGADA");
+
   return (
-    <div className="flex flex-col gap-8">
-      <Encabezado rol={u.rol} titulo="Instalaciones por recibir" descripcion="Revisa la instalación y levanta el acta con el comprador. Sin acta no hay entrega; la garantía arranca el día que se recibe." />
-      {unidades.length === 0 ? <SinDatos>No hay instalaciones programadas todavía.</SinDatos> : (
-        <div className="flex flex-col gap-5">
-          {unidades.map((x) => {
-            const plan = x.comprador?.planes[0];
-            return (
-              <section key={x.id} className="card flex flex-col gap-4 p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-[18px] font-semibold">{x.torre} {x.numero} <span className="text-[13px] font-normal text-muted">· {x.proyecto.nombre} · {plan?.paquete.nombre}</span></h2>
-                  <ChipInstalacion estado={x.estadoInstalacion} />
-                </div>
-                <table className="tbl">
-                  <thead><tr><th>Partida a revisar</th><th className="r">Cantidad</th><th>Acabado</th></tr></thead>
-                  <tbody>
-                    {plan?.renglones.map((r, i) => <tr key={i}><td>{r.partida.nombre}</td><td className="r">{r.cantidad}</td><td>{r.acabado ?? "—"}</td></tr>)}
-                  </tbody>
-                </table>
-                <div className="flex flex-wrap items-start gap-4">
-                  {x.actaEntrega ? <Chip texto={`Acta firmada por ${x.actaEntrega.quienFirmo} · ${fechaCorta(x.actaEntrega.fechaFirma)}`} clase="ok" /> : x.estadoInstalacion === "INSTALADA" ? <ActaForm unidadId={x.id} /> : <Chip texto="Acta pendiente" clase="wait" />}
-                  {x.estadoInstalacion === "INSTALADA" && x.actaEntrega && <BotonAvance unidadId={x.id} tipo="instalacion" hacia="ENTREGADA" texto="Entregada" />}
-                </div>
-              </section>
-            );
-          })}
-        </div>
+    <div className="flex flex-col gap-9">
+      <Saludo nombre={u.nombre} titulo="Por recibir">Revisa pieza por pieza con el comprador y firmen el acta. Sin acta no hay entrega, y la garantía corre desde ese día.</Saludo>
+
+      {porRecibir.length > 0
+        ? <Estado tipo="aviso" titulo={porRecibir.length === 1 ? "Tienes 1 instalación por recibir" : `Tienes ${porRecibir.length} instalaciones por recibir`} />
+        : <Estado tipo="ok" titulo="No hay instalaciones por recibir">Cuando Moretti termine una, aparece aquí.</Estado>}
+
+      {porRecibir.map((x) => {
+        const plan = x.comprador?.planes[0];
+        return (
+          <article key={x.id} className="pt-tarjeta">
+            <div className="pt-tarjeta-cab">
+              <h3>{x.torre} {x.numero}</h3>
+              <span>{x.proyecto.nombre} · Paquete {plan?.paquete.nombre}</span>
+            </div>
+            <div>
+              <p className="bo-k mb-3">Qué revisar</p>
+              <ul className="pt-check">
+                {plan?.renglones.map((r, i) => <li key={i}><span>{r.partida.nombre}{r.cantidad > 1 && ` ×${r.cantidad}`} <small>{r.acabado ?? ""}</small></span></li>)}
+              </ul>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 border-t border-line pt-4">
+              <span className="text-[13px] font-semibold text-muted">1. Acta</span>
+              {x.actaEntrega ? <span className="chip ok">Firmada por {x.actaEntrega.quienFirmo} · {fechaCorta(x.actaEntrega.fechaFirma)}</span> : <ActaForm unidadId={x.id} />}
+              <span className="text-[13px] font-semibold text-muted">2. Entrega</span>
+              {x.actaEntrega ? <BotonAvance unidadId={x.id} tipo="instalacion" hacia="ENTREGADA" texto="Marcar entregada" /> : <span className="text-[13px] text-muted">Primero el acta</span>}
+            </div>
+          </article>
+        );
+      })}
+
+      {programadas.length > 0 && (
+        <Seccion titulo="Moretti está instalando" cuenta={programadas.length} nota="Te toca cuando terminen">
+          <Lista>{programadas.map((x) => <Fila key={x.id} unidad={`${x.torre} ${x.numero}`} detalle={x.proyecto.nombre} medio={`Paquete ${x.comprador?.planes[0]?.paquete.nombre ?? "—"}`}><span className="chip info">Instalación programada</span></Fila>)}</Lista>
+        </Seccion>
       )}
-      <p className="bo-nota">Ves las partidas para saber qué revisar, pero no pagos, ni precios, ni documentos del contrato.</p>
+
+      {entregadas.length > 0 && (
+        <details className="pt-mas">
+          <summary>Ver {entregadas.length} ya entregadas</summary>
+          <Lista>{entregadas.map((x) => <Fila key={x.id} unidad={`${x.torre} ${x.numero}`} detalle={x.proyecto.nombre} medio={x.actaEntrega ? `Acta: ${x.actaEntrega.quienFirmo} · ${fechaCorta(x.actaEntrega.fechaFirma)}` : ""}><span className="chip ok">Entregada</span></Fila>)}</Lista>
+        </details>
+      )}
     </div>
   );
 }

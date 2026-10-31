@@ -18,12 +18,12 @@ export default function BotonAvance({ unidadId, tipo, hacia, texto }: { unidadId
     setCargando(false);
     const data = res ? await res.json().catch(() => ({})) : {};
     if (!res?.ok) return avisar.error(data.error ?? "No se pudo guardar.");
-    avisar.exito(`Marcado: ${texto}.`);
+    avisar.exito(`Listo: ${texto.toLowerCase()}.`);
     router.refresh();
   }
   return (
-    <button type="button" className="btn btn-sm btn-ghost" disabled={cargando} onClick={marcar}>
-      {cargando ? "Guardando…" : `Marcar «${texto}»`}
+    <button type="button" className="btn btn-sm" disabled={cargando} onClick={marcar}>
+      {cargando ? "Guardando…" : texto}
     </button>
   );
 }

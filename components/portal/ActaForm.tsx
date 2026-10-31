@@ -9,7 +9,7 @@ export default function ActaForm({ unidadId }: { unidadId: string }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [cargando, setCargando] = useState(false);
-  if (!abierto) return <button type="button" className="btn btn-sm btn-ghost" onClick={() => setAbierto(true)}>Levantar acta</button>;
+  if (!abierto) return <button type="button" className="btn btn-sm" onClick={() => setAbierto(true)}>Firmar acta con el comprador</button>;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -28,7 +28,7 @@ export default function ActaForm({ unidadId }: { unidadId: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-2 text-[13px]">
+    <form onSubmit={onSubmit} className="grid w-full max-w-[360px] gap-2 text-[13px]">
       <input name="quien" placeholder="Quién firmó (comprador)" required />
       <input name="fecha" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
       <input name="archivo" placeholder="Archivo del acta (acta-BR717.pdf)" required />

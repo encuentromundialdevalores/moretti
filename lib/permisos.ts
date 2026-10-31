@@ -32,21 +32,21 @@ export type Pantalla = { href: string; texto: string };
 /** Las pantallas de cada rol en el portal. ADMIN usa el back office (/admin). */
 export const PANTALLAS: Record<Exclude<Rol, "ADMIN">, Pantalla[]> = {
   COMPRADOR: [
-    { href: "/portal/comprador", texto: "Mi plan de pagos" },
+    { href: "/portal/comprador", texto: "Mis pagos" },
     { href: "/portal/comprador/departamento", texto: "Mi departamento" },
     { href: "/portal/comprador/documentos", texto: "Mis documentos" },
   ],
   MORETTI: [
-    { href: "/portal/moretti", texto: "Unidades por producir" },
-    { href: "/portal/moretti/fiscal", texto: "Pendientes fiscales" },
+    { href: "/portal/moretti", texto: "Mis unidades" },
+    { href: "/portal/moretti/fiscal", texto: "Facturas por subir" },
   ],
   VERIFICADOR: [
-    { href: "/portal/verificador", texto: "Levantamientos" },
-    { href: "/portal/verificador/instalaciones", texto: "Instalaciones por recibir" },
+    { href: "/portal/verificador", texto: "Por medir" },
+    { href: "/portal/verificador/instalaciones", texto: "Por recibir" },
   ],
   DESARROLLADOR: [
-    { href: "/portal/pissa", texto: "Unidades vendidas" },
-    { href: "/portal/pissa/accesos", texto: "Accesos e instalaciones" },
+    { href: "/portal/pissa", texto: "Unidades con paquete" },
+    { href: "/portal/pissa/accesos", texto: "Quién va a entrar" },
   ],
 };
 
