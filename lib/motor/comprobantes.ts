@@ -1,3 +1,4 @@
+import { uuidDeXml } from "../cfdi";
 import { EstadoComprobante, Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
 import { ReglaError, mx } from "./errores";
@@ -44,16 +45,28 @@ export async function crearPendienteFiscal(
   return comprobante;
 }
 
-/** Cierra el pendiente con el folio fiscal (UUID del CFDI). */
-export async function marcarComprobanteEmitido(params: { id: string; folioFiscal: string; usuario?: string }) {
+/**
+ * Cierra el pendiente con el folio fiscal (UUID del CFDI). Si viene el XML,
+ * se guarda para que el comprador lo descargue, y su timbre tiene que traer
+ * el mismo folio: así no se cuelga el XML de otro cobro.
+ */
+export async function marcarComprobanteEmitido(params: { id: string; folioFiscal: string; usuario?: string; xml?: string; xmlNombre?: string }) {
   const folio = params.folioFiscal.trim().toUpperCase();
+  if (params.xml !== undefined && uuidDeXml(params.xml) !== folio) {
+    throw new ReglaError("Ese XML no trae el timbre fiscal con este folio. ¿Es el CFDI de este cobro?");
+  }
   if (!/^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/.test(folio)) {
     throw new ReglaError("El folio fiscal es el UUID del CFDI: 36 caracteres, como 6F9619FF-8B86-D011-B42D-00C04FC964FF.");
   }
   return prisma.$transaction(async (tx) => {
     const { count } = await tx.comprobanteFiscal.updateMany({
       where: { id: params.id, estado: EstadoComprobante.PENDIENTE },
-      data: { estado: EstadoComprobante.EMITIDO, folioFiscal: folio, emitidoEn: new Date() },
+      data: {
+        estado: EstadoComprobante.EMITIDO,
+        folioFiscal: folio,
+        emitidoEn: new Date(),
+        ...(params.xml !== undefined ? { xml: params.xml, xmlNombre: params.xmlNombre?.slice(0, 120) || `${folio}.xml` } : {}),
+      },
     });
     if (count === 0) throw new ReglaError("Ese comprobante ya estaba emitido o no existe.");
     const c = await tx.comprobanteFiscal.findUniqueOrThrow({ where: { id: params.id } });
@@ -63,7 +76,7 @@ export async function marcarComprobanteEmitido(params: { id: string; folioFiscal
         entidadId: c.planId,
         tipo: "comprobante_emitido",
         usuario: params.usuario ?? "back office",
-        comentario: `Comprobante fiscal emitido por ${mx(Number(c.monto))}, folio ${folio}.`,
+        comentario: `Comprobante fiscal emitido por ${mx(Number(c.monto))}, folio ${folio}${c.xml ? " (con XML)" : ""}.`,
       },
     });
     return c;

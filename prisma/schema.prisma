@@ -13,6 +13,7 @@ model Desarrollador {
   contacto               String?
   condicionesComerciales String?
   proyectos              Proyecto[]
+  usuarios               Usuario[]
   createdAt              DateTime   @default(now())
 }
 
@@ -221,6 +222,7 @@ model Comprador {
   tarjetaInvalida       Boolean  @default(false)
   fechaRegistro         DateTime @default(now())
   planes                Plan[]
+  usuarios              Usuario[]
 }
 
 enum EstadoPlan {
@@ -494,6 +496,9 @@ model ComprobanteFiscal {
   estado      EstadoComprobante @default(PENDIENTE)
   /// El folio fiscal (UUID del CFDI) cuando se emite.
   folioFiscal String?
+  /// El XML del CFDI tal como lo subió quien lo emitió (para que el comprador lo descargue).
+  xml         String?           @db.Text
+  xmlNombre   String?
   emitidoEn   DateTime?
   createdAt   DateTime          @default(now())
 
@@ -636,4 +641,41 @@ model Evento {
   fecha          DateTime @default(now())
 
   @@index([entidadTipo, entidadId])
+}
+
+/// Quién entra y qué ve (maqueta de Ana Cris, «Tablero»; D-48).
+enum Rol {
+  /// día uno: opera todo, entra al back office.
+  ADMIN
+  /// Fabrica e instala. No ve la comisión del canal.
+  MORETTI
+  /// Mide y recibe. No ve pagos, precios ni el contrato.
+  VERIFICADOR
+  /// Entrega el edificio (PISSA). Sus unidades, sin precios ni datos del comprador.
+  DESARROLLADOR
+  /// Ve su plan, su unidad y sus papeles. Sólo los suyos.
+  COMPRADOR
+}
+
+/// Una cuenta por persona. La contraseña nunca se guarda en claro (scrypt);
+/// la invitación es una liga de un solo uso cuyo token sólo se guarda como
+/// SHA-256 (lib/cuentas.ts, D-49).
+model Usuario {
+  id                String         @id @default(cuid())
+  correo            String         @unique
+  nombre            String
+  rol               Rol
+  /// Null hasta que la persona abre su invitación y elige contraseña.
+  contrasenaHash    String?
+  activo            Boolean        @default(true)
+  /// Sólo COMPRADOR: de quién es el plan que ve.
+  comprador         Comprador?     @relation(fields: [compradorId], references: [id])
+  compradorId       String?
+  /// Sólo DESARROLLADOR: de qué desarrollador son las unidades que ve.
+  desarrollador     Desarrollador? @relation(fields: [desarrolladorId], references: [id])
+  desarrolladorId   String?
+  invitacionHash    String?        @unique
+  invitacionVence   DateTime?
+  ultimoAcceso      DateTime?
+  createdAt         DateTime       @default(now())
 }

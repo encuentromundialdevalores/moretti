@@ -630,3 +630,17 @@ a.bo-fila { color: inherit; }
   .bo-hero { grid-template-columns: 1fr; }
   .bo-hero > div + div { border-left: 0; border-top: 1px solid var(--line); }
 }
+
+/* Inicio: las cotizaciones que faltan por cerrar, como tarjeta con salida directa. */
+.bo-cotiza { border: 1px solid color-mix(in srgb, var(--amber) 30%, var(--line)); border-radius: 18px; background: linear-gradient(135deg, var(--amber-soft), var(--surface) 70%); overflow: hidden; }
+.bo-cotiza-cab { display: flex; gap: 18px; align-items: center; padding: 22px 24px; }
+.bo-cotiza-cab h2 { margin: 0; font-size: 20px; font-weight: 600; }
+.bo-cotiza-cab p { margin-top: 4px; font-size: 14px; color: var(--ink-2); }
+.bo-cotiza-n { flex: none; width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: var(--amber); color: var(--surface); font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bo-cotiza-lista { list-style: none; margin: 0; padding: 0; border-top: 1px solid color-mix(in srgb, var(--amber) 20%, var(--line)); background: var(--surface); }
+.bo-cotiza-lista li + li { border-top: 1px solid var(--line); }
+.bo-cotiza-lista a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 24px; color: inherit; transition: background 0.15s; }
+.bo-cotiza-lista a:hover { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.bo-cotiza-lista b { display: block; font-size: 15px; font-weight: 600; }
+.bo-cotiza-lista small { font-size: 12.5px; color: var(--muted); }
+.bo-cotiza-ir { flex: none; font-size: 13.5px; font-weight: 600; color: var(--accent); }

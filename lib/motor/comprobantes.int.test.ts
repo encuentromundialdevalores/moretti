@@ -69,4 +69,21 @@ describe("S · cada pago nace con su comprobante pendiente", () => {
       marcarComprobanteEmitido({ id: pendiente.id, folioFiscal: "6F9619FF-8B86-D011-B42D-00C04FC964FF" })
     ).rejects.toThrow("Ese comprobante ya estaba emitido o no existe.");
   });
+
+  it("guarda el XML sólo si su timbre trae el mismo folio", async () => {
+    const { plan } = await planActivo();
+    const pendiente = await prisma.comprobanteFiscal.findFirstOrThrow({ where: { planId: plan.id } });
+    const folio = "6F9619FF-8B86-D011-B42D-00C04FC964FF";
+    const xml = (uuid: string) => `<cfdi:Comprobante><cfdi:Complemento><tfd:TimbreFiscalDigital Version="1.1" UUID="${uuid}"/></cfdi:Complemento></cfdi:Comprobante>`;
+
+    await expect(
+      marcarComprobanteEmitido({ id: pendiente.id, folioFiscal: folio, xml: xml("11111111-2222-3333-4444-555555555555") })
+    ).rejects.toThrow(/no trae el timbre fiscal con este folio/);
+    await marcarComprobanteEmitido({ id: pendiente.id, folioFiscal: folio, xml: xml(folio.toLowerCase()), xmlNombre: "factura.xml" });
+    expect(await prisma.comprobanteFiscal.findUniqueOrThrow({ where: { id: pendiente.id } })).toMatchObject({
+      estado: "EMITIDO",
+      xmlNombre: "factura.xml",
+      xml: xml(folio.toLowerCase()),
+    });
+  });
 });

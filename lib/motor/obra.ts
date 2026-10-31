@@ -129,20 +129,22 @@ export async function registrarActaEntrega(params: {
   archivoNombre: string;
   quienFirmo: string;
   fechaFirma: Date;
+  usuario?: string;
 }) {
+  const { usuario, ...datos } = params;
   const quien = params.quienFirmo.trim();
   if (!quien) throw new ReglaError("Falta quién firmó el acta de entrega.");
   const existente = await prisma.actaEntrega.findUnique({ where: { unidadId: params.unidadId } });
   if (existente) throw new ReglaError("Esta unidad ya tiene su acta de entrega registrada.");
 
   return prisma.$transaction(async (tx) => {
-    const acta = await tx.actaEntrega.create({ data: { ...params, quienFirmo: quien } });
+    const acta = await tx.actaEntrega.create({ data: { ...datos, quienFirmo: quien } });
     await tx.evento.create({
       data: {
         entidadTipo: "unidad",
         entidadId: params.unidadId,
         tipo: "acta_entrega_registrada",
-        usuario: "back office",
+        usuario: usuario ?? "back office",
         comentario: `Acta de entrega firmada por ${quien} el ${params.fechaFirma.toLocaleDateString("es-MX")} (${params.archivoNombre}).`,
       },
     });

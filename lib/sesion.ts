@@ -103,3 +103,47 @@ export function cookieOpciones(borrar = false) {
     maxAge: borrar ? 0 : TTL_MS / 1000,
   };
 }
+
+// ── Sesión del portal (comprador, Moretti, verificador, PISSA; D-49) ─────────
+//
+// Otra cookie y otro `sub`: un token del portal nunca abre el back office
+// (verificarToken exige sub "admin") y uno del back office no abre el portal.
+
+const COOKIE_PORTAL = "dno_portal_v1";
+
+export type SesionPortal = { uid: string; rol: string };
+
+export async function crearTokenPortal(s: SesionPortal): Promise<string> {
+  const enc = new TextEncoder();
+  const payloadB64 = b64uEncode(enc.encode(JSON.stringify({ sub: "portal", uid: s.uid, rol: s.rol, exp: Date.now() + TTL_MS })));
+  const firma = await crypto.subtle.sign("HMAC", await clave(), enc.encode(payloadB64));
+  return `${payloadB64}.${b64uEncode(new Uint8Array(firma))}`;
+}
+
+/** La sesión si el token es válido y vigente; si no, null. No lanza. */
+export async function leerTokenPortal(token: string | undefined): Promise<SesionPortal | null> {
+  try {
+    if (!token) return null;
+    const [payloadB64, firmaB64] = token.split(".");
+    if (!payloadB64 || !firmaB64) return null;
+    const ok = await crypto.subtle.verify(
+      "HMAC",
+      await clave(),
+      new Uint8Array(b64uDecode(firmaB64)),
+      new TextEncoder().encode(payloadB64)
+    );
+    if (!ok) return null;
+    const p = JSON.parse(new TextDecoder().decode(b64uDecode(payloadB64)));
+    if (p.sub !== "portal" || typeof p.uid !== "string" || typeof p.rol !== "string") return null;
+    if (typeof p.exp !== "number" || Date.now() > p.exp) return null;
+    return { uid: p.uid, rol: p.rol };
+  } catch {
+    return null;
+  }
+}
+
+export { COOKIE_PORTAL };
+
+export function cookiePortalOpciones(borrar = false) {
+  return { ...cookieOpciones(borrar), name: COOKIE_PORTAL };
+}

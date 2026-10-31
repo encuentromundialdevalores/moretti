@@ -78,7 +78,7 @@ for (const [metodo, ruta] of PRIVADAS) {
 for (const ruta of ["/admin", "/admin/planes/x", "/admin/fiscal", "/admin/transferencias", "/admin/cobranza"]) {
   await caso(`GET ${ruta} sin sesión → al login`, async () => {
     const r = await pedir(ruta);
-    esperar(r.status === 307 && (r.headers.get("location") ?? "").includes("/admin/login"), `contestó ${r.status} ${r.headers.get("location")}`);
+    esperar(r.status === 307 && (r.headers.get("location") ?? "").includes("/entrar"), `contestó ${r.status} ${r.headers.get("location")}`);
   });
 }
 
