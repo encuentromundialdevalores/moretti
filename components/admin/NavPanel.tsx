@@ -13,11 +13,15 @@ const ICONOS = {
   fiscal: "M6.5 3.5h8l3 3v14h-11zM14.5 3.5v3h3M9 11h6M9 14.5h6M9 18h3",
   proyectos: "M4.5 20V6.5L12 3l7.5 3.5V20M9 20v-5h6v5M9 9.5h.01M15 9.5h.01",
   paquetes: "M4 8l8-4 8 4-8 4-8-4zM4 8v8l8 4 8-4V8M12 12v8",
+  obra: "M4 20h16M6 20V10l6-5 6 5v10M10 20v-5h4v5",
+  avisos: "M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4",
   usuarios: "M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18.5 14.5c1.8.8 3 2.8 3 5.5",
 } as const;
 
 const ENLACES: { href: string; texto: string; icono: keyof typeof ICONOS; exacto?: boolean }[] = [
   { href: "/admin", texto: "Inicio", icono: "inicio", exacto: true },
+  { href: "/admin/obra", texto: "Obra y calendario", icono: "obra" },
+  { href: "/admin/avisos", texto: "Avisos", icono: "avisos" },
   { href: "/admin/proyectos", texto: "Proyectos", icono: "proyectos" },
   { href: "/admin/catalogo", texto: "Paquetes", icono: "paquetes" },
   { href: "/admin/cobranza", texto: "Cobranza", icono: "cobranza" },
@@ -35,7 +39,7 @@ function Icono({ d }: { d: string }) {
   );
 }
 
-export default function NavPanel() {
+export default function NavPanel({ nuevos = 0 }: { nuevos?: number }) {
   const ruta = usePathname();
   const activo = (href: string, exacto?: boolean) =>
     exacto ? ruta === href : ruta === href || ruta.startsWith(`${href}/`);
@@ -57,6 +61,7 @@ export default function NavPanel() {
           >
             <Icono d={ICONOS[e.icono]} />
             {e.texto}
+            {e.icono === "avisos" && nuevos > 0 && <span className="panel-badge" aria-label={`${nuevos} sin leer`}>{nuevos > 99 ? "99+" : nuevos}</span>}
           </Link>
         ))}
       </nav>

@@ -167,3 +167,29 @@
   .pt-cal-celda { min-height: 74px; }
   .pt-cal-ev b { display: none; }
 }
+
+/* Facturas: XML y PDF, subir o descargar. */
+.pt-factura { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.pt-arch { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 9px; font-size: 12.5px; font-weight: 600; text-decoration: none; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); cursor: pointer; }
+.pt-arch.hay { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: var(--accent-soft); color: var(--accent); }
+.pt-arch.subir { background: var(--accent); border-color: var(--accent); color: var(--ground); }
+.pt-arch.subir:disabled { opacity: 0.6; cursor: default; }
+.pt-arch.falta { color: var(--muted); border-style: dashed; cursor: default; }
+.pt-subido { font-size: 11.5px; color: var(--muted); }
+
+/* Conversación de la unidad. */
+.pt-chat { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+.pt-chat li { max-width: 80%; align-self: flex-start; padding: 10px 14px; border-radius: 4px 14px 14px 14px; background: var(--surface); border: 1px solid var(--line); font-size: 14.5px; white-space: pre-wrap; }
+.pt-chat li[data-mio] { align-self: flex-end; border-radius: 14px 4px 14px 14px; background: var(--accent-soft); border-color: transparent; }
+.pt-chat-cab { font-size: 11.5px; color: var(--muted); margin-bottom: 2px; }
+.pt-chat-cab b { color: var(--ink); }
+
+/* Avisos. */
+.pt-avisos { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; }
+.pt-avisos li + li { border-top: 1px solid var(--line); }
+.pt-avisos li > * { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 14px 20px; color: inherit; text-decoration: none; }
+.pt-avisos li > a:hover { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.pt-avisos li[data-nuevo] > * { background: color-mix(in srgb, var(--amber-soft) 65%, var(--surface)); }
+.pt-avisos li[data-nuevo] .pt-aviso-texto::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--warm); vertical-align: 1px; }
+.pt-aviso-texto { font-size: 14.5px; }
+.pt-aviso-cuando { flex: none; font-size: 12px; color: var(--muted); }

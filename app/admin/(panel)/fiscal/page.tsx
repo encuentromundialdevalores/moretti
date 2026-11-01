@@ -3,150 +3,97 @@ import { connection } from "next/server";
 import { EstadoComprobante } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { PageHead, Money } from "@/components/ui";
-import { Estado, Iniciales } from "@/components/admin/Bo";
-import { DIAS_ALERTA_FISCAL, diasParaVencer, urgenciaComprobante, type Urgencia } from "@/lib/motor/fiscal";
+import Factura from "@/components/portal/Factura";
+import { mesDe } from "@/components/portal/Calendario";
 import { conceptoExhibicion } from "@/lib/motor/recalculo";
-import EmitirForm from "./EmitirForm";
+import "../../../portal/portal.css";
 
-const fechaLarga = (f: Date) =>
-  f.toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
-
-const CHIP: Record<Urgencia, (dias: number) => { clase: string; texto: string }> = {
-  vencido: (d) => ({ clase: "late", texto: `Vencido hace ${-d} ${-d === 1 ? "día" : "días"}` }),
-  por_vencer: (d) => ({ clase: "warn", texto: d === 0 ? "Vence hoy" : `Vence en ${d} ${d === 1 ? "día" : "días"}` }),
-  a_tiempo: (d) => ({ clase: "wait", texto: `En ${d} días` }),
-};
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const clave = (d: Date) => d.toISOString().slice(0, 7);
+const fecha = (f: Date) => f.toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" });
 
 /**
- * Comprobantes fiscales pendientes (actividad S, R8). Agrupados por fecha
- * límite porque el problema es el volumen: todos los planes vencen el mismo
- * día 5. Lo vencido y lo que vence en DIAS_ALERTA_FISCAL días o menos se
- * distingue a simple vista. Arriba, la próxima fecha límite con su cuenta
- * regresiva; abajo, una fila por comprobante con su folio a la mano (D-47).
+ * Fiscal, mes por mes (D-53): por cada cobro del mes, el complemento de pago
+ * que Moretti emite para el comprador y la factura de comisión (comisión +
+ * IVA) que Moretti le hace a día uno. Organizado por unidad.
  */
-export default async function FiscalPage() {
+export default async function FiscalPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   await connection();
-  const pendientes = await prisma.comprobanteFiscal.findMany({
-    where: { estado: EstadoComprobante.PENDIENTE },
-    include: {
-      pago: {
-        include: {
-          exhibicion: true,
-          plan: { include: { comprador: { include: { unidad: true } } } },
-        },
-      },
+  const mes = mesDe((await searchParams).mes);
+  const siguiente = new Date(Date.UTC(mes.getUTCFullYear(), mes.getUTCMonth() + 1, 1));
+  const anterior = new Date(Date.UTC(mes.getUTCFullYear(), mes.getUTCMonth() - 1, 1));
+
+  const pagos = await prisma.pago.findMany({
+    where: { fecha: { gte: mes, lt: siguiente }, OR: [{ comprobante: { isNot: null } }, { facturaComision: { isNot: null } }] },
+    select: {
+      id: true,
+      monto: true,
+      fecha: true,
+      exhibicion: { select: { numero: true, tipo: true } },
+      plan: { select: { id: true, comprador: { select: { nombre: true, unidad: { select: { torre: true, numero: true } } } } } },
+      comprobante: { select: { id: true, estado: true, xmlNombre: true, pdfNombre: true, subidoPor: true } },
+      facturaComision: { select: { id: true, estado: true, base: true, total: true, xmlNombre: true, pdfNombre: true, subidoPor: true } },
     },
-    orderBy: [{ fechaLimite: "asc" }, { fechaCobro: "asc" }],
+    orderBy: [{ fecha: "asc" }],
   });
-  const emitidos = await prisma.comprobanteFiscal.count({ where: { estado: EstadoComprobante.EMITIDO } });
+  const pendientes = await Promise.all([
+    prisma.comprobanteFiscal.count({ where: { estado: EstadoComprobante.PENDIENTE, fechaCobro: { gte: mes, lt: siguiente } } }),
+    prisma.facturaComision.count({ where: { estado: EstadoComprobante.PENDIENTE, fechaCobro: { gte: mes, lt: siguiente } } }),
+  ]);
+  const totalComision = pagos.reduce((a, p) => a + Number(p.facturaComision?.total ?? 0), 0);
+  const cobrado = pagos.reduce((a, p) => a + Number(p.monto), 0);
 
-  const hoy = new Date();
-  const grupos = new Map<string, typeof pendientes>();
-  for (const c of pendientes) {
-    const clave = c.fechaLimite.toISOString().slice(0, 10);
-    grupos.set(clave, [...(grupos.get(clave) ?? []), c]);
+  // Por unidad, como pidió Ana Cris: cada venta con todos sus pagos del mes.
+  const porUnidad = new Map<string, typeof pagos>();
+  for (const p of pagos) {
+    const k = `${p.plan.comprador.unidad.torre} ${p.plan.comprador.unidad.numero}`;
+    porUnidad.set(k, [...(porUnidad.get(k) ?? []), p]);
   }
-  const vencidos = pendientes.filter((c) => urgenciaComprobante(c.fechaLimite, hoy) === "vencido").length;
-  const porVencer = pendientes.filter((c) => urgenciaComprobante(c.fechaLimite, hoy) === "por_vencer").length;
-
-  const proxima = pendientes[0];
-  const diasProxima = proxima ? diasParaVencer(proxima.fechaLimite, hoy) : 0;
-  const urgProxima = proxima ? urgenciaComprobante(proxima.fechaLimite, hoy) : "a_tiempo";
-  const totalPendiente = pendientes.reduce((a, c) => a + Number(c.monto), 0);
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHead
-        eyebrow="Fiscal"
-        titulo="Comprobantes pendientes"
-        descripcion="Cada cobro necesita su comprobante a más tardar el día 5 del mes siguiente. Cuando lo emitas, pega aquí su folio."
-      />
+      <PageHead eyebrow="Fiscal" titulo="Facturas, mes por mes" descripcion="Por cada cobro, Moretti emite el complemento de pago (PPD) para el comprador y te factura su comisión más IVA." />
 
-      <div className="bo-hero">
-        <div className="bo-principal">
-          <p className="bo-k">Por emitir</p>
-          <p className="bo-v">{pendientes.length}</p>
-          <p className="bo-nota"><Money valor={totalPendiente} /> en cobros</p>
-        </div>
-        <div>
-          <p className="bo-k">Vencidos</p>
-          <p className={`bo-v ${vencidos ? "alerta" : ""}`}>{vencidos}</p>
-          <p className="bo-nota">Ya pasó su fecha</p>
-        </div>
-        <div>
-          <p className="bo-k">Por vencer</p>
-          <p className="bo-v">{porVencer}</p>
-          <p className="bo-nota">{DIAS_ALERTA_FISCAL} días o menos</p>
-        </div>
-        <div>
-          <p className="bo-k">Emitidos</p>
-          <p className="bo-v">{emitidos}</p>
-          <p className="bo-nota">Con su folio</p>
-        </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Link href={`/admin/fiscal?mes=${clave(anterior)}`} className="btn btn-sm btn-ghost" aria-label="Mes anterior">←</Link>
+        <h2 className="m-0 text-[22px] font-semibold capitalize">{MESES[mes.getUTCMonth()]} {mes.getUTCFullYear()}</h2>
+        <Link href={`/admin/fiscal?mes=${clave(siguiente)}`} className="btn btn-sm btn-ghost" aria-label="Mes siguiente">→</Link>
       </div>
 
-      {pendientes.length === 0 ? (
-        <Estado tipo="ok" titulo="Todo emitido">No hay comprobantes pendientes. Cada cobro nuevo agrega el suyo aquí.</Estado>
-      ) : (
-        <div className="bo-card bo-limite">
-          <div className={`bo-limite-dias ${urgProxima === "vencido" ? "late" : urgProxima === "por_vencer" ? "warn" : ""}`}>
-            <b>{Math.abs(diasProxima)}</b>
-            <span>{urgProxima === "vencido" ? "días tarde" : Math.abs(diasProxima) === 1 ? "día" : "días"}</span>
-          </div>
-          <div>
-            <h3>Próxima fecha límite: {fechaLarga(proxima!.fechaLimite)}</h3>
-            <p>
-              {grupos.get(proxima!.fechaLimite.toISOString().slice(0, 10))!.length} comprobantes vencen ese día.
-              {vencidos > 0 && <> Hay <b className="text-warm">{vencidos} vencidos</b>: emítelos primero.</>}
-            </p>
-          </div>
+      <div className="bo-hero" style={{ gridTemplateColumns: "1.35fr repeat(2, 1fr)" }}>
+        <div className="bo-principal">
+          <p className="bo-k">Por subir</p>
+          <p className="bo-v">{pendientes[0] + pendientes[1]}</p>
+          <p className="bo-nota">{pendientes[0]} complementos · {pendientes[1]} de comisión</p>
         </div>
-      )}
+        <div><p className="bo-k">Cobrado en el mes</p><p className="bo-v"><Money valor={cobrado} /></p><p className="bo-nota">{pagos.length} pagos</p></div>
+        <div><p className="bo-k">Comisión + IVA</p><p className="bo-v"><Money valor={totalComision} /></p><p className="bo-nota">Lo que Moretti te factura</p></div>
+      </div>
 
-      {[...grupos.entries()].map(([clave, lista]) => {
-        const limite = lista[0].fechaLimite;
-        const dias = diasParaVencer(limite, hoy);
-        const chip = CHIP[urgenciaComprobante(limite, hoy)](dias);
-        const total = lista.reduce((a, c) => a + Number(c.monto), 0);
-        return (
-          <section key={clave} className="bo-seccion">
-            <div className="bo-seccion-t">
-              <h2>Vencen el {fechaLarga(limite)}</h2>
-              <span className={`chip ${chip.clase}`}>{chip.texto}</span>
-              <span>
-                {lista.length} {lista.length === 1 ? "comprobante" : "comprobantes"} · <Money valor={total} />
-              </span>
-            </div>
-            <div className="bo-lista">
-              {lista.map((c) => {
-                const { plan, exhibicion } = c.pago;
-                const u = plan.comprador.unidad;
-                return (
-                  <div key={c.id} className="bo-fila">
-                    <Iniciales nombre={plan.comprador.nombre} />
-                    <div className="bo-quien">
-                      <Link href={`/admin/planes/${plan.id}`} className="hover:text-accent">
-                        <b>{plan.comprador.nombre}</b>
-                      </Link>
-                      <span>{u.torre} {u.numero} · {plan.comprador.folio}</span>
-                    </div>
-                    <div className="bo-que">
-                      {conceptoExhibicion(exhibicion.numero, exhibicion.tipo)}
-                      <small>Cobrado el {c.fechaCobro.toLocaleDateString("es-MX", { day: "numeric", month: "short" })}</small>
-                    </div>
-                    <p className="bo-monto"><Money valor={Number(c.monto)} /></p>
-                    <EmitirForm id={c.id} />
-                  </div>
-                );
-              })}
+      {pagos.length === 0 ? <div className="pt-vacio">No hubo cobros este mes.</div> : (
+        [...porUnidad].map(([unidad, deU]) => (
+          <section key={unidad} className="bo-seccion">
+            <div className="bo-seccion-t"><h2>{unidad}</h2><span>{deU[0].plan.comprador.nombre} · <Link href={`/admin/planes/${deU[0].plan.id}`} className="text-accent">ver plan</Link></span></div>
+            <div className="card overflow-x-auto p-5">
+              <table className="tbl">
+                <thead><tr><th>Pago</th><th className="r">Monto</th><th>Complemento de pago</th><th className="r">Comisión + IVA</th><th>Factura de comisión</th></tr></thead>
+                <tbody>
+                  {deU.map((p) => (
+                    <tr key={p.id}>
+                      <td>{conceptoExhibicion(p.exhibicion.numero, p.exhibicion.tipo)}<br /><span className="text-[12px] text-muted">{fecha(p.fecha)}</span></td>
+                      <td className="r"><Money valor={Number(p.monto)} conCentavos /></td>
+                      <td>{p.comprobante ? <Factura tipo="complemento" id={p.comprobante.id} xml={!!p.comprobante.xmlNombre} pdf={!!p.comprobante.pdfNombre} subidoPor={p.comprobante.subidoPor} puedeSubir={false} /> : "—"}</td>
+                      <td className="r">{p.facturaComision ? <Money valor={Number(p.facturaComision.total)} conCentavos /> : "—"}</td>
+                      <td>{p.facturaComision ? <Factura tipo="comision" id={p.facturaComision.id} xml={!!p.facturaComision.xmlNombre} pdf={!!p.facturaComision.pdfNombre} subidoPor={p.facturaComision.subidoPor} puedeSubir={false} /> : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
-        );
-      })}
-
-      <p className="text-[12.5px] text-muted">
-        Fuera de este prototipo: leer el XML del CFDI y consultarlo al SAT. Aquí se cierra a mano con su folio.
-      </p>
+        ))
+      )}
+      <p className="bo-nota">Las facturas las sube Moretti desde su portal; aquí se descargan. La verificación contra el SAT queda pendiente.</p>
     </div>
   );
 }

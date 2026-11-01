@@ -27,7 +27,19 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
           include: {
             prototipo: true,
             contrato: true,
-            comprador: { include: { planes: { orderBy: { createdAt: "desc" }, take: 1 } } },
+            comprador: {
+              include: {
+                planes: {
+                  orderBy: { createdAt: "desc" },
+                  take: 1,
+                  include: {
+                    paquete: { select: { nombre: true } },
+                    // El anticipo: su fecha y su folio en Stripe.
+                    pagos: { where: { exhibicion: { tipo: "ANTICIPO" } }, select: { fecha: true, referenciaStripe: true, stripePaymentIntentId: true }, take: 1 },
+                  },
+                },
+              },
+            },
           },
           orderBy: [{ torre: "asc" }, { numero: "asc" }],
         },
@@ -39,7 +51,6 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
   if (!proyecto) notFound();
 
   const vendidas = proyecto.unidades.filter((u) => u.comprador).length;
-  const conPrecio = proyecto.prototipos.filter((p) => p.precios.length > 0).length;
 
   const unidadesTabla = (
         <div className="card overflow-x-auto p-5">
@@ -49,6 +60,9 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                 <th>Unidad</th>
                 <th>Prototipo</th>
                 <th>Comprador</th>
+                <th>Paquete</th>
+                <th>Anticipo</th>
+                <th>Folio Stripe</th>
                 <th>Contrato</th>
                 <th className="r">Estado</th>
                 <th className="r" />
@@ -57,6 +71,8 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
             <tbody>
               {proyecto.unidades.map((u) => {
                 const plan = u.comprador?.planes[0];
+                const anticipo = plan?.pagos[0];
+                const folio = anticipo?.stripePaymentIntentId ?? anticipo?.referenciaStripe;
                 return (
                   <tr key={u.id}>
                     <td className="font-medium">
@@ -75,6 +91,9 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
                         <span className="text-muted">Libre</span>
                       )}
                     </td>
+                    <td>{plan?.paquete.nombre ?? <span className="text-muted">—</span>}</td>
+                    <td className="text-ink-2">{anticipo ? anticipo.fecha.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }) : "—"}</td>
+                    <td>{folio ? <span className="font-mono text-[11px]" title={folio}>{folio.length > 16 ? `${folio.slice(0, 16)}…` : folio}</span> : <span className="text-muted">—</span>}</td>
                     <td>
                       {u.contrato ? (
                         <span className="chip ok">Firmado</span>
@@ -167,11 +186,11 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="panel-kpi" data-destacado="">
           <p className="k">Unidades apartadas</p>
-          <p className="v">{vendidas} / {proyecto.unidades.length}</p>
+          <p className="v">{vendidas}</p>
         </div>
         <div className="panel-kpi">
-          <p className="k">Prototipos con precio</p>
-          <p className="v">{conPrecio} / {proyecto.prototipos.length}</p>
+          <p className="k">Unidades libres</p>
+          <p className="v">{proyecto.unidades.length - vendidas}</p>
         </div>
         <div className="panel-kpi">
           <p className="k">Anticipo</p>
@@ -187,7 +206,6 @@ export default async function ProyectoPage({ params }: { params: Promise<{ id: s
         proyectoId={proyecto.id}
         prototipos={proyecto.prototipos.map((p) => ({ id: p.id, clave: p.clave }))}
         paquetes={paquetes.map((p) => ({ id: p.id, nombre: p.nombre }))}
-        cuentas={{ prototipos: proyecto.prototipos.length, unidades: proyecto.unidades.length, conPrecio }}
         tablas={{ unidades: unidadesTabla, precios: preciosTabla }}
         datos={{
           nombre: proyecto.nombre,

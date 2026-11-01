@@ -4,6 +4,7 @@ import { Saludo, Seccion, Vacio } from "@/components/portal/Kit";
 import { fechaCorta } from "@/components/portal/Chips";
 import { compradorActual } from "@/components/portal/datos-comprador";
 import { comprobantesDelPlan } from "@/lib/portal-datos";
+import Factura from "@/components/portal/Factura";
 
 const ICONO_DOC = <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></svg>;
 
@@ -33,14 +34,14 @@ export default async function MisDocumentos() {
         ))}
       </div>
 
-      <Seccion titulo="Tus facturas" cuenta={comprobantes.length} nota="Una por cada pago; la emite Moretti y aparece aquí">
+      <Seccion titulo="Tus facturas" cuenta={comprobantes.length} nota="Un complemento de pago por cada pago, en XML y PDF; lo emite Moretti">
         {comprobantes.length === 0 ? <Vacio>Cuando se haga tu primer cobro, aquí aparece su factura.</Vacio> : (
           <ul className="pt-pagos">
             {comprobantes.map((x) => (
               <li key={x.id} style={{ gridTemplateColumns: "minmax(0,1fr) auto auto" }}>
                 <span>Pago del {fechaCorta(x.fechaCobro)}{x.folioFiscal && <small className="font-mono">{x.folioFiscal}</small>}</span>
-                {x.xmlNombre
-                  ? <a href={`/api/portal/comprobantes/${x.id}/xml`} className="btn btn-sm btn-ghost">Descargar XML</a>
+                {x.xmlNombre || x.pdfNombre
+                  ? <Factura tipo="complemento" id={x.id} xml={!!x.xmlNombre} pdf={!!x.pdfNombre} subidoPor={x.subidoPor} puedeSubir={false} />
                   : <span className={`chip ${x.folioFiscal ? "ok" : "wait"}`}>{x.folioFiscal ? "Emitida" : "En proceso"}</span>}
                 <span className="monto"><Money valor={Number(x.monto)} conCentavos /></span>
               </li>

@@ -40,24 +40,6 @@ export async function unidadesParaMoretti() {
   });
 }
 
-export async function comprobantesParaMoretti() {
-  return prisma.comprobanteFiscal.findMany({
-    where: { estado: EstadoComprobante.PENDIENTE },
-    select: {
-      id: true,
-      monto: true,
-      fechaCobro: true,
-      fechaLimite: true,
-      pago: {
-        select: {
-          exhibicion: { select: { numero: true, tipo: true } },
-          plan: { select: { comprador: { select: { unidad: { select: { torre: true, numero: true } } } } } },
-        },
-      },
-    },
-    orderBy: [{ fechaLimite: "asc" }, { fechaCobro: "asc" }],
-  });
-}
 
 export async function unidadesParaVerificador() {
   return prisma.unidad.findMany({
@@ -134,7 +116,7 @@ export async function planDelComprador(compradorId: string) {
 export async function comprobantesDelPlan(planId: string) {
   return prisma.comprobanteFiscal.findMany({
     where: { planId },
-    select: { id: true, monto: true, fechaCobro: true, estado: true, folioFiscal: true, xmlNombre: true },
+    select: { id: true, monto: true, fechaCobro: true, estado: true, folioFiscal: true, xmlNombre: true, pdfNombre: true, subidoPor: true },
     orderBy: { fechaCobro: "asc" },
   });
 }
@@ -155,6 +137,7 @@ export async function detalleUnidad(unidadId: string) {
       actaEntrega: { select: { fechaFirma: true, archivoNombre: true, quienFirmo: true } },
       fases: { select: { fase: true, fechaEstimada: true, cumplidaEn: true, cumplidaPor: true } },
       observaciones: { select: { id: true, fase: true, texto: true, autor: true, rol: true, createdAt: true }, orderBy: { createdAt: "desc" } },
+      mensajes: { select: { id: true, texto: true, autor: true, rol: true, createdAt: true }, orderBy: { createdAt: "asc" }, take: 200 },
       comprador: {
         select: {
           nombre: true,
@@ -174,13 +157,35 @@ export async function detalleUnidad(unidadId: string) {
   });
 }
 
-/** Comprobantes de un plan para el detalle de la unidad (con o sin XML). */
-export async function comprobantesDeUnidad(planId: string) {
-  return prisma.comprobanteFiscal.findMany({
-    where: { planId },
-    select: { id: true, fechaCobro: true, estado: true, folioFiscal: true, xmlNombre: true },
-    orderBy: { fechaCobro: "asc" },
-  });
+const archivos = { id: true, estado: true, folioFiscal: true, fechaCobro: true, fechaLimite: true, xmlNombre: true, pdfNombre: true, subidoPor: true } as const;
+const deQuePago = {
+  pago: {
+    select: {
+      exhibicion: { select: { numero: true, tipo: true } },
+      plan: { select: { comprador: { select: { nombre: true, unidad: { select: { id: true, torre: true, numero: true } } } } } },
+    },
+  },
+} as const;
+
+/** Complementos y facturas de comisión de un plan, para el detalle de la unidad (D-53). */
+export async function facturasDeUnidad(planId: string) {
+  const [complementos, comisiones] = await Promise.all([
+    prisma.comprobanteFiscal.findMany({ where: { planId }, select: { ...archivos, monto: true, ...deQuePago }, orderBy: { fechaCobro: "asc" } }),
+    prisma.facturaComision.findMany({ where: { planId }, select: { ...archivos, total: true, ...deQuePago }, orderBy: { fechaCobro: "asc" } }),
+  ]);
+  return { complementos, comisiones };
+}
+
+/** Lo que Moretti tiene que facturar por los cobros de un mes, de los dos tipos. */
+export async function facturasPendientesDelMes(desde: Date, hasta: Date) {
+  const where = { estado: EstadoComprobante.PENDIENTE, fechaCobro: { gte: desde, lt: hasta } };
+  const antes = { estado: EstadoComprobante.PENDIENTE, fechaCobro: { lt: desde } };
+  const [complementos, comisiones, atrasadas] = await Promise.all([
+    prisma.comprobanteFiscal.findMany({ where, select: { ...archivos, monto: true, ...deQuePago }, orderBy: { fechaLimite: "asc" } }),
+    prisma.facturaComision.findMany({ where, select: { ...archivos, base: true, iva: true, total: true, ...deQuePago }, orderBy: { fechaLimite: "asc" } }),
+    Promise.all([prisma.comprobanteFiscal.count({ where: antes }), prisma.facturaComision.count({ where: antes })]).then(([a, b]) => a + b),
+  ]);
+  return { complementos, comisiones, atrasadas };
 }
 
 /** Las fechas de todas las fases en un rango, para el calendario. */

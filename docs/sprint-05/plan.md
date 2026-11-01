@@ -1,5 +1,7 @@
 # Sprint 5 · Cambios de la reunión con Ana Cris (31 oct)
 
+**Estado:** fases A a D construidas en `sprint-5/ana-cris` (D-52 a D-55).
+
 Rama `sprint-5/ana-cris`. Cuatro fases, en este orden: cada una se puede
 mostrar sola.
 
@@ -41,8 +43,7 @@ la instalación.
   a día uno. Hay un pendiente por pago y se sube igual (XML + PDF).
 - Cada archivo dice quién lo subió («Subido por Moretti»).
 - La sección Fiscal del admin va mes por mes.
-- Requiere almacenamiento permanente de archivos (Vercel Blob). Hoy los
-  archivos se guardan en disco.
+- Los XML y PDF se guardan en la base de datos (D-53): no hace falta Vercel Blob.
 
 ## Fase C · Back office
 

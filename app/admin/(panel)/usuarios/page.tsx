@@ -38,7 +38,9 @@ export default async function UsuariosPage() {
                 ? <span className="chip ok">Activa</span>
                 : u.invitacionVence && u.invitacionVence > ahora
                   ? <span className="chip warn">Invitación enviada</span>
-                  : <span className="chip wait">Liga vencida</span>;
+                  : u.invitacionVence
+                    ? <span className="chip wait">Liga vencida</span>
+                    : <span className="chip warn">Sin invitar · mándale su liga</span>;
             return (
               <tr key={u.id}>
                 <td><b>{u.nombre}</b><br /><span className="text-[12.5px] text-muted">{u.correo}</span></td>

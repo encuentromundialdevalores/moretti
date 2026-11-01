@@ -18,41 +18,22 @@ export type DatosProyecto = {
   stripeConnectedAccountId: string | null;
 };
 
-type Paso = "prototipos" | "unidades" | "precios" | "datos";
-
-const TITULOS: Record<Paso, string> = {
-  prototipos: "Primero, los prototipos.",
-  unidades: "Luego, las unidades.",
-  precios: "Después, los precios.",
-  datos: "Por último, los datos y la foto.",
-};
 
 export default function FormulariosProyecto({
   proyectoId,
   prototipos,
   paquetes,
-  cuentas,
   tablas,
   datos,
 }: {
   proyectoId: string;
   prototipos: Opcion[];
   paquetes: Opcion[];
-  cuentas: { prototipos: number; unidades: number; conPrecio: number };
   tablas: { unidades: React.ReactNode; precios: React.ReactNode };
   datos: DatosProyecto;
 }) {
   const router = useRouter();
   const [guardando, setGuardando] = useState(false);
-
-  const PASOS: { id: Paso; titulo: string; cuenta: string; listo: boolean }[] = [
-    { id: "prototipos", titulo: "Prototipos", cuenta: String(cuentas.prototipos), listo: cuentas.prototipos > 0 },
-    { id: "unidades", titulo: "Unidades", cuenta: String(cuentas.unidades), listo: cuentas.unidades > 0 },
-    { id: "precios", titulo: "Precios", cuenta: `${cuentas.conPrecio}/${cuentas.prototipos}`, listo: cuentas.prototipos > 0 && cuentas.conPrecio === cuentas.prototipos },
-    { id: "datos", titulo: "Datos e imagen", cuenta: datos.imagen ? "con foto" : "sin foto", listo: Boolean(datos.imagen) },
-  ];
-  // Arranca en el primer paso que falta; si todo está, en las unidades.
-  const [paso, setPaso] = useState<Paso>(PASOS.find((p) => !p.listo)?.id ?? "unidades");
 
   async function enviar(
     url: string,
@@ -81,77 +62,13 @@ export default function FormulariosProyecto({
   const sinPrototipos = prototipos.length === 0;
 
   return (
-    <section className="flex flex-col gap-5">
-      <div>
-        <p className="panel-etiqueta">Configurar paso a paso</p>
-        <h2 className="mt-2 text-[26px]">{TITULOS[paso]}</h2>
-      </div>
-
-      <div className="pasos" role="tablist" aria-label="Pasos para configurar el proyecto">
-        {PASOS.map((p, i) => (
-          <button
-            key={p.id}
-            type="button"
-            role="tab"
-            className="paso"
-            aria-selected={paso === p.id}
-            data-listo={p.listo ? "" : undefined}
-            onClick={() => setPaso(p.id)}
-          >
-            <span className="paso-n">{p.listo ? "✓" : i + 1}</span>
-            {p.titulo}
-            <span className="paso-cuenta">{p.cuenta}</span>
-          </button>
-        ))}
-      </div>
-
-      {paso === "prototipos" && (
-        <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
-          <form
-            className="card flex h-fit flex-col gap-4 p-6"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const f = new FormData(e.currentTarget);
-              enviar(
-                "/api/prototipos",
-                { proyectoId, clave: f.get("clave"), superficie: f.get("superficie"), recamaras: f.get("recamaras") },
-                e.currentTarget,
-                "POST",
-                () => `Prototipo «${f.get("clave")}» agregado.`
-              );
-            }}
-          >
-            <div>
-              <h3 className="text-[18px]">Nuevo prototipo</h3>
-              <p className="mt-1 text-[13.5px] text-ink-2">Cada tipo de departamento. El precio de los paquetes cambia por prototipo.</p>
-            </div>
-            <div className="field">
-              <label htmlFor="clave">Clave</label>
-              <input id="clave" name="clave" placeholder="Ej. DEPA 2R (tipo 717)" required />
-              <p className="ayuda">Como viene en los planos del desarrollador.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="field">
-                <label htmlFor="superficie">Superficie (m²)</label>
-                <input id="superficie" name="superficie" type="number" step="0.01" min={1} placeholder="Ej. 68.5" required />
-              </div>
-              <div className="field">
-                <label htmlFor="recamaras">Recámaras</label>
-                <input id="recamaras" name="recamaras" type="number" min={0} placeholder="Ej. 2" required />
-              </div>
-            </div>
-            <p className="ayuda -mt-2">Los climas por defecto se calculan solos: uno en la sala y uno por recámara.</p>
-            <button className="btn btn-sm self-start" disabled={guardando}>Agregar prototipo</button>
-          </form>
-          <div className="flex min-w-0 flex-col gap-3">
-            <p className="text-[14px] text-ink-2">Prototipos del proyecto y su precio por paquete:</p>
-            {tablas.precios}
-          </div>
-        </div>
-      )}
-
-      {paso === "unidades" && (
-        <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
+    <section className="flex flex-col gap-10">
+      <section className="bo-seccion">
+        <div className="bo-seccion-t"><h2>Unidades</h2><span>Paquete comprado, fecha y folio del anticipo en Stripe</span></div>
+        {tablas.unidades}
+        <details className="bo-plegable">
+          <summary><span>Agregar unidades</span><small>Una o un rango, del 1201 al 1210</small></summary>
+          <div className="lg:max-w-[420px]">
           <form
             className="card flex h-fit flex-col gap-4 p-6"
             onSubmit={(e) => {
@@ -202,15 +119,15 @@ export default function FormulariosProyecto({
             <p className="ayuda -mt-2">Con «hasta» se agregan todas: del 1201 al 1210 son 10 unidades.</p>
             <button className="btn btn-sm self-start" disabled={guardando || sinPrototipos}>Agregar unidades</button>
           </form>
-          <div className="flex min-w-0 flex-col gap-3">
-            <p className="text-[14px] text-ink-2">Unidades del proyecto. En una libre puedes dar de alta al comprador:</p>
-            {tablas.unidades}
           </div>
-        </div>
-      )}
-
-      {paso === "precios" && (
-        <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
+        </details>
+      </section>
+      <section className="bo-seccion">
+        <div className="bo-seccion-t"><h2>Prototipos y precios</h2><span>Precio vigente por prototipo y paquete; «—» es que falta</span></div>
+        {tablas.precios}
+        <details className="bo-plegable">
+          <summary><span>Poner o cambiar un precio</span><small>El anterior queda en el histórico</small></summary>
+          <div className="lg:max-w-[420px]">
           <form
             className="card flex h-fit flex-col gap-4 p-6"
             onSubmit={(e) => {
@@ -254,14 +171,52 @@ export default function FormulariosProyecto({
             </div>
             <button className="btn btn-sm self-start" disabled={guardando || sinPrototipos}>Guardar precio</button>
           </form>
-          <div className="flex min-w-0 flex-col gap-3">
-            <p className="text-[14px] text-ink-2">Precio vigente por prototipo y paquete. «—» es que falta.</p>
-            {tablas.precios}
           </div>
+        </details>
+      </section>
+      <details className="bo-plegable">
+        <summary><span>Agregar prototipo</span><small>Metros y recámaras</small></summary>
+        <div className="grid gap-5 lg:max-w-[420px]">
+          <form
+            className="card flex h-fit flex-col gap-4 p-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              enviar(
+                "/api/prototipos",
+                { proyectoId, clave: f.get("clave"), superficie: f.get("superficie"), recamaras: f.get("recamaras") },
+                e.currentTarget,
+                "POST",
+                () => `Prototipo «${f.get("clave")}» agregado.`
+              );
+            }}
+          >
+            <div>
+              <h3 className="text-[18px]">Nuevo prototipo</h3>
+              <p className="mt-1 text-[13.5px] text-ink-2">Cada tipo de departamento. El precio de los paquetes cambia por prototipo.</p>
+            </div>
+            <div className="field">
+              <label htmlFor="clave">Clave</label>
+              <input id="clave" name="clave" placeholder="Ej. DEPA 2R (tipo 717)" required />
+              <p className="ayuda">Como viene en los planos del desarrollador.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="field">
+                <label htmlFor="superficie">Superficie (m²)</label>
+                <input id="superficie" name="superficie" type="number" step="0.01" min={1} placeholder="Ej. 68.5" required />
+              </div>
+              <div className="field">
+                <label htmlFor="recamaras">Recámaras</label>
+                <input id="recamaras" name="recamaras" type="number" min={0} placeholder="Ej. 2" required />
+              </div>
+            </div>
+            <p className="ayuda -mt-2">Los climas por defecto se calculan solos: uno en la sala y uno por recámara.</p>
+            <button className="btn btn-sm self-start" disabled={guardando}>Agregar prototipo</button>
+          </form>
         </div>
-      )}
-
-      {paso === "datos" && (
+      </details>
+      <details className="bo-plegable">
+        <summary><span>Datos del proyecto e imagen</span><small>Nombre, anticipo, comisión, cuenta de Stripe y foto</small></summary>
         <form
           className="card flex flex-col gap-5 p-6 sm:p-8"
           onSubmit={(e) => {
@@ -333,7 +288,7 @@ export default function FormulariosProyecto({
           <SubirImagen name="imagen" inicial={datos.imagen} etiqueta="Foto del proyecto" />
           <button className="btn self-start" disabled={guardando}>{guardando ? "Guardando…" : "Guardar cambios"}</button>
         </form>
-      )}
+      </details>
     </section>
   );
 }

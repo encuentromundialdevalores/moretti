@@ -12,6 +12,7 @@ type MovimientoReal = {
   comprador: string;
   folio: string;
   unidad: string;
+  unidadId: string;
   planId: string;
   concepto: string;
   monto: number;
@@ -75,6 +76,7 @@ export default async function PagosPage({
       comprador: p.plan.comprador.nombre,
       folio: p.plan.comprador.folio,
       unidad: `${u.torre} ${u.numero}`,
+      unidadId: u.id,
       concepto:
         conceptoExhibicion(p.exhibicion.numero, p.exhibicion.tipo),
       monto: Number(p.monto),
@@ -163,6 +165,7 @@ export default async function PagosPage({
             <thead>
               <tr>
                 <th>Fecha</th>
+                <th>Unidad</th>
                 <th>Comprador</th>
                 <th>Concepto</th>
                 <th className="r">Monto</th>
@@ -174,7 +177,7 @@ export default async function PagosPage({
             <tbody>
               {visibles.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-muted">No hay movimientos confirmados.</td>
+                  <td colSpan={8} className="py-8 text-center text-muted">No hay movimientos confirmados.</td>
                 </tr>
               )}
               {visibles.map((m) => (
@@ -183,12 +186,17 @@ export default async function PagosPage({
                     {fecha(m.fecha)}
                     <span className="block text-[12px] text-muted">{hora(m.fecha)}</span>
                   </td>
+                  <td>
+                    <Link href={`/admin/obra?u=${m.unidadId}`} className="btn btn-sm btn-ghost whitespace-nowrap" title="Abrir la unidad: fases, documentos y facturas">
+                      {m.unidad}
+                    </Link>
+                  </td>
                   <td className="whitespace-nowrap">
                     <Link href={`/admin/planes/${m.planId}`} className="hover:text-accent">
                       {m.comprador}
                     </Link>
                     <span className="block text-[12px] text-muted">
-                      {m.folio} · {m.unidad}
+                      {m.folio}
                     </span>
                   </td>
                   <td>

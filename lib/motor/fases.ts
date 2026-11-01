@@ -10,6 +10,7 @@ import { prisma } from "../prisma";
 import { FASE, FASES, PASOS_DE_FASE, estaCumplida, yaEsta } from "../fases";
 import { avanzarEstadoOperativo, avanzarInstalacion } from "./obra";
 import { ReglaError } from "./errores";
+import { avisarAlEquipo } from "../avisos";
 
 const fechaTexto = (f: Date) => f.toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" });
 
@@ -20,7 +21,7 @@ async function unidad(unidadId: string) {
 }
 
 /** Pone (o quita, con null) la fecha estimada de una fase. */
-export async function ponerFechaFase(params: { unidadId: string; fase: Fase; fecha: Date | null; usuario: string }) {
+export async function ponerFechaFase(params: { unidadId: string; fase: Fase; fecha: Date | null; usuario: string; rol: Rol }) {
   const u = await unidad(params.unidadId);
   const r = await prisma.faseUnidad.upsert({
     where: { unidadId_fase: { unidadId: u.id, fase: params.fase } },
@@ -38,6 +39,12 @@ export async function ponerFechaFase(params: { unidadId: string; fase: Fase; fec
         : `${FASE[params.fase].fecha}: sin fecha.`,
     },
   });
+  await avisarAlEquipo(
+    prisma,
+    params.rol,
+    `${params.usuario} ${params.fecha ? `puso la ${FASE[params.fase].fecha.toLowerCase()} de ${u.torre} ${u.numero}: ${fechaTexto(params.fecha)}` : `quitó la ${FASE[params.fase].fecha.toLowerCase()} de ${u.torre} ${u.numero}`}.`,
+    u.id
+  );
   // Con fecha de instalación y la pieza ya en almacén, la instalación queda programada.
   if (params.fase === "INSTALACION" && params.fecha) await programarSiSePuede(u.id, params.usuario);
   return r;
@@ -56,7 +63,7 @@ async function programarSiSePuede(unidadId: string, usuario: string) {
 }
 
 /** Marca la fase como cumplida. Pide que la anterior lo esté. */
-export async function cumplirFase(params: { unidadId: string; fase: Fase; usuario: string }) {
+export async function cumplirFase(params: { unidadId: string; fase: Fase; usuario: string; rol: Rol }) {
   const u = await unidad(params.unidadId);
   const i = FASES.indexOf(params.fase);
   const marcada = (f: Fase) => !!u.fases.find((x) => x.fase === f)?.cumplidaEn;
@@ -90,6 +97,13 @@ export async function cumplirFase(params: { unidadId: string; fase: Fase; usuari
     create: { unidadId: u.id, fase: params.fase, cumplidaEn: ahora, cumplidaPor: params.usuario },
     update: { cumplidaEn: ahora, cumplidaPor: params.usuario },
   });
+  const sigue = FASES[i + 1];
+  await avisarAlEquipo(
+    prisma,
+    params.rol,
+    `${u.torre} ${u.numero}: ${FASE[params.fase].nombre} cumplida (${params.usuario}).${sigue ? ` Sigue ${FASE[sigue].nombre}, de ${FASE[sigue].responsable === "MORETTI" ? "Moretti" : "el verificador"}.` : " Unidad entregada."}`,
+    u.id
+  );
   // La pieza llegó y ya había fecha de instalación: queda programada.
   if (params.fase === "LLEGADA_PEDIDO" && u.fases.find((x) => x.fase === "INSTALACION")?.fechaEstimada) {
     await programarSiSePuede(u.id, params.usuario);
@@ -101,8 +115,22 @@ export async function observar(params: { unidadId: string; fase?: Fase | null; t
   const texto = params.texto.trim();
   if (!texto) throw new ReglaError("Escribe la observación.");
   if (texto.length > 2000) throw new ReglaError("La observación es demasiado larga (máximo 2,000 caracteres).");
-  await unidad(params.unidadId);
-  return prisma.observacionUnidad.create({
+  const u = await unidad(params.unidadId);
+  const o = await prisma.observacionUnidad.create({
     data: { unidadId: params.unidadId, fase: params.fase ?? null, texto, autor: params.autor, rol: params.rol },
   });
+  await avisarAlEquipo(prisma, params.rol, `${params.autor} anotó una observación en ${u.torre} ${u.numero}${params.fase ? ` (${FASE[params.fase].nombre})` : ""}.`, u.id);
+  return o;
+}
+
+/** Un mensaje en la conversación de la unidad; avisa al resto del equipo. */
+export async function enviarMensaje(params: { unidadId: string; texto: string; autor: string; rol: Rol }) {
+  const texto = params.texto.trim();
+  if (!texto) throw new ReglaError("Escribe el mensaje.");
+  if (texto.length > 2000) throw new ReglaError("El mensaje es demasiado largo (máximo 2,000 caracteres).");
+  const u = await unidad(params.unidadId);
+  const m = await prisma.mensajeUnidad.create({ data: { unidadId: u.id, texto, autor: params.autor, rol: params.rol } });
+  const corto = texto.length > 80 ? `${texto.slice(0, 80)}…` : texto;
+  await avisarAlEquipo(prisma, params.rol, `${params.autor} escribió en ${u.torre} ${u.numero}: «${corto}»`, u.id);
+  return m;
 }

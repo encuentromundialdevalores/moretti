@@ -644,3 +644,41 @@ a.bo-fila { color: inherit; }
 .bo-cotiza-lista b { display: block; font-size: 15px; font-weight: 600; }
 .bo-cotiza-lista small { font-size: 12.5px; color: var(--muted); }
 .bo-cotiza-ir { flex: none; font-size: 13.5px; font-weight: 600; color: var(--accent); }
+
+/* Contador de avisos sin leer en el menú. */
+.panel-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: inline-grid; place-items: center; background: var(--warm); color: var(--surface); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Secciones plegables (formularios para agregar) en una sola vista. */
+.bo-plegable { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.bo-plegable > summary { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px; cursor: pointer; list-style: none; font-weight: 600; font-size: 15px; }
+.bo-plegable > summary::-webkit-details-marker { display: none; }
+.bo-plegable > summary::before { content: "+"; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.bo-plegable[open] > summary::before { content: "−"; }
+.bo-plegable > summary small { font-weight: 400; font-size: 13px; color: var(--muted); }
+.bo-plegable > :not(summary) { padding: 0 18px 18px; }
+.bo-plegable .card { box-shadow: none; border: 0; padding: 0 !important; }
+
+/* Paquetes: productos editables uno por uno. */
+.pq-items { display: flex; flex-direction: column; gap: 8px; }
+.pq-items ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.pq-item + .pq-item { border-top: 1px solid var(--line); }
+.pq-item[data-abierto] { background: color-mix(in srgb, var(--surface-2) 40%, var(--surface)); }
+.pq-item-cab { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+.pq-item-cab > div { flex: 1; }
+.pq-item-cab b { display: block; font-size: 14px; font-weight: 600; }
+.pq-item-cab span { font-size: 12px; color: var(--muted); }
+.pq-item-foto { flex: none; width: 40px; height: 40px; border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+.pq-item-foto img { width: 100%; height: 100%; object-fit: cover; }
+.pq-item-colores { display: flex; gap: 3px; }
+.pq-item-colores i { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line-2); }
+.pq-item-form { display: flex; flex-direction: column; gap: 16px; padding: 4px 14px 16px; }
+.pq-pares { display: flex; flex-direction: column; gap: 8px; border: 0; padding: 0; margin: 0; }
+.pq-pares legend { font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+.pq-pares legend small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.pq-par { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: center; }
+.pq-par-color { grid-template-columns: 44px minmax(0, 1fr) auto; }
+.pq-par input { font-size: 13.5px; padding: 7px 10px; }
+.pq-par input[type="color"] { height: 36px; padding: 2px; }
+.pq-quitar { width: 30px; height: 30px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; }
+.pq-quitar:hover { background: var(--warm-soft); color: var(--warm); }
+.pq-agregar { align-self: flex-start; border: 0; background: none; padding: 2px 0; font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer; }

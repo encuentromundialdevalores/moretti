@@ -35,6 +35,8 @@ const API_PUBLICA: { metodo: string; ruta: RegExp }[] = [
   // Acceso con correo y contraseña, y la liga de invitación (D-49).
   { metodo: "POST", ruta: /^\/api\/(entrar|salir)$/ },
   { metodo: "POST", ruta: /^\/api\/cuenta\/activar$/ },
+  // Descarga de facturas: la ruta revisa la sesión del portal o del back office (D-53).
+  { metodo: "GET", ruta: /^\/api\/archivos\/(complemento|comision)\/[^/]+\/(xml|pdf)$/ },
 ];
 
 const CAMBIA = new Set(["POST", "PUT", "PATCH", "DELETE"]);

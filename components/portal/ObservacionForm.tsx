@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { avisar } from "@/components/admin/avisar";
 
 /** Escribir una observación sobre la unidad, opcionalmente de una fase. */
-export default function ObservacionForm({ unidadId, fases, api = "/api/portal/observaciones" }: { unidadId: string; fases: { valor: string; nombre: string }[]; api?: string }) {
+export default function ObservacionForm({ unidadId, fases, api = "/api/portal/observaciones", mensaje = false }: { unidadId: string; fases?: { valor: string; nombre: string }[]; api?: string; mensaje?: boolean }) {
   const router = useRouter();
   const [cargando, setCargando] = useState(false);
 
@@ -21,21 +21,30 @@ export default function ObservacionForm({ unidadId, fases, api = "/api/portal/ob
     }).catch(() => null);
     setCargando(false);
     const data = res ? await res.json().catch(() => ({})) : {};
-    if (!res?.ok) return avisar.error(data.error ?? "No se pudo guardar la observación.");
-    avisar.exito("Observación guardada.");
+    if (!res?.ok) return avisar.error(data.error ?? "No se pudo guardar.");
+    avisar.exito(mensaje ? "Mensaje enviado: le avisamos al equipo." : "Observación guardada.");
     form.reset();
     router.refresh();
   }
 
   return (
     <form onSubmit={onSubmit} className="pt-obs-form">
-      <textarea name="texto" rows={2} maxLength={2000} placeholder="Ej. La pared de la cocina mide 3 cm menos que el plano." aria-label="Observación" required />
+      <textarea
+        name="texto"
+        rows={2}
+        maxLength={2000}
+        placeholder={mensaje ? "Escribe al equipo de esta unidad…" : "Ej. La pared de la cocina mide 3 cm menos que el plano."}
+        aria-label={mensaje ? "Mensaje" : "Observación"}
+        required
+      />
       <div className="flex flex-wrap items-center gap-3">
-        <select name="fase" aria-label="Fase" defaultValue="">
-          <option value="">General</option>
-          {fases.map((f) => <option key={f.valor} value={f.valor}>{f.nombre}</option>)}
-        </select>
-        <button className="btn btn-sm" disabled={cargando}>{cargando ? "Guardando…" : "Agregar observación"}</button>
+        {fases && (
+          <select name="fase" aria-label="Fase" defaultValue="">
+            <option value="">General</option>
+            {fases.map((f) => <option key={f.valor} value={f.valor}>{f.nombre}</option>)}
+          </select>
+        )}
+        <button className="btn btn-sm" disabled={cargando}>{cargando ? "Enviando…" : mensaje ? "Enviar" : "Agregar observación"}</button>
       </div>
     </form>
   );

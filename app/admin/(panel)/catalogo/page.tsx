@@ -3,13 +3,14 @@ import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PageHead, Money } from "@/components/ui";
 import EditarPaquete from "./EditarPaquete";
+import EditarPartida from "./EditarPartida";
 
 export default async function PaquetesPage() {
   // En cada visita, no al compilar: lee la base.
   await connection();
   const paquetes = await prisma.paquete.findMany({
     orderBy: { nivel: "asc" },
-    include: { precios: { where: { vigenteHasta: null } } },
+    include: { precios: { where: { vigenteHasta: null } }, catalogo: { orderBy: { orden: "asc" } } },
   });
 
   return (
@@ -17,7 +18,7 @@ export default async function PaquetesPage() {
       <PageHead
         eyebrow="Paquetes"
         titulo="Lo que se vende, nivel por nivel."
-        descripcion="Aquí se edita cómo se ve cada paquete en el sitio: nombre, descripción, lo que incluye e imagen. Los precios se capturan por prototipo en la ficha de cada proyecto."
+        descripcion="Cómo se ve cada paquete en el sitio y cada uno de sus productos: nombre, imagen, ficha y acabados. Los precios se capturan por prototipo en la ficha de cada proyecto."
       />
 
       <ol className="flex flex-col gap-4">
@@ -54,6 +55,25 @@ export default async function PaquetesPage() {
                     </span>
                   ))}
                 </div>
+                {p.catalogo.length > 0 && (
+                  <div className="pq-items">
+                    <p className="pq-k">Productos del paquete · uno por uno</p>
+                    <ul>
+                      {p.catalogo.map((x) => (
+                        <EditarPartida
+                          key={x.id}
+                          partida={{
+                            id: x.id,
+                            nombre: x.nombre,
+                            imagen: x.imagen,
+                            ficha: (Array.isArray(x.ficha) ? x.ficha : []) as [string, string][],
+                            acabados: (Array.isArray(x.acabados) ? x.acabados : []) as [string, string][],
+                          }}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <EditarPaquete
                   paquete={{
                     id: p.id,

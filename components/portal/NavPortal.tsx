@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { Pantalla } from "@/lib/permisos";
 
 /** Menú del portal: las pantallas del rol, como el «Sus pantallas» de la maqueta. */
-export default function NavPortal({ quien, nombre, pantallas }: { quien: string; nombre: string; pantallas: Pantalla[] }) {
+export default function NavPortal({ quien, nombre, pantallas, nuevos = 0 }: { quien: string; nombre: string; pantallas: Pantalla[]; nuevos?: number }) {
   const ruta = usePathname();
   const router = useRouter();
   async function salir() {
@@ -23,6 +23,7 @@ export default function NavPortal({ quien, nombre, pantallas }: { quien: string;
         {pantallas.map((p) => (
           <Link key={p.href} href={p.href} className="panel-enlace" aria-current={ruta === p.href ? "page" : undefined}>
             {p.texto}
+            {p.href.endsWith("/avisos") && nuevos > 0 && <span className="panel-badge" aria-label={`${nuevos} sin leer`}>{nuevos > 99 ? "99+" : nuevos}</span>}
           </Link>
         ))}
       </nav>

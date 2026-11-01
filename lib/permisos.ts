@@ -39,11 +39,13 @@ export const PANTALLAS: Record<Exclude<Rol, "ADMIN">, Pantalla[]> = {
   MORETTI: [
     { href: "/portal/moretti", texto: "Mis unidades" },
     { href: "/portal/moretti/calendario", texto: "Calendario" },
-    { href: "/portal/moretti/fiscal", texto: "Facturas por subir" },
+    { href: "/portal/moretti/fiscal", texto: "Facturas del mes" },
+    { href: "/portal/moretti/avisos", texto: "Avisos" },
   ],
   VERIFICADOR: [
     { href: "/portal/verificador", texto: "Mis unidades" },
     { href: "/portal/verificador/calendario", texto: "Calendario" },
+    { href: "/portal/verificador/avisos", texto: "Avisos" },
   ],
   DESARROLLADOR: [
     { href: "/portal/pissa", texto: "Unidades con paquete" },
@@ -109,7 +111,8 @@ export function puedeCerrarComprobante(rol: Rol): boolean {
 
 /** Cómo se firma un cambio en la bitácora: «Ana López (Moretti)». */
 export function firma(nombre: string, rol: Rol): string {
-  return `${nombre} (${ETIQUETA_ROL[rol].nombre})`;
+  const perfil = ETIQUETA_ROL[rol].nombre;
+  return nombre === perfil ? nombre : `${nombre} (${perfil})`;
 }
 
 /** «Cómo va» para PISSA: sin detalle de fabricación ni de pagos (maqueta p-unid). */

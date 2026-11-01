@@ -3,7 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { PageHead, Money } from "@/components/ui";
 import { Estado, IconoAviso } from "@/components/admin/Bo";
 import { retenidoPorProyecto } from "@/lib/motor/transferencias";
+import Link from "next/link";
+import { EstadoPago } from "@prisma/client";
 import AutorizarForm from "./AutorizarForm";
+
+const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 const ESTADO = { EN_PROCESO: ["warn", "En proceso"], ENVIADA: ["ok", "Enviada"], FALLIDA: ["late", "Fallida"] } as const;
 
@@ -14,10 +18,37 @@ const ESTADO = { EN_PROCESO: ["warn", "En proceso"], ENVIADA: ["ok", "Enviada"],
  */
 export default async function TransferenciasPage() {
   await connection();
-  const [retenido, historial] = await Promise.all([
+  const [retenido, historial, pagos] = await Promise.all([
     retenidoPorProyecto(),
     prisma.transferenciaMoretti.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
+    prisma.pago.findMany({
+      where: { estado: EstadoPago.CONFIRMADO },
+      select: {
+        fecha: true,
+        monto: true,
+        montoComision: true,
+        transferencia: { select: { estado: true } },
+        plan: { select: { comprador: { select: { unidad: { select: { id: true, torre: true, numero: true } } } } } },
+      },
+      orderBy: { fecha: "desc" },
+    }),
   ]);
+
+  // Por mes y, dentro, por unidad (Sprint 5): cuánto le toca a Moretti de cada venta.
+  type Renglon = { unidadId: string; unidad: string; pagos: number; cobrado: number; comision: number; transferido: number };
+  const porMes = new Map<string, Map<string, Renglon>>();
+  for (const p of pagos) {
+    const mes = p.fecha.toISOString().slice(0, 7);
+    const u = p.plan.comprador.unidad;
+    const deMes = porMes.get(mes) ?? new Map<string, Renglon>();
+    const r = deMes.get(u.id) ?? { unidadId: u.id, unidad: `${u.torre} ${u.numero}`, pagos: 0, cobrado: 0, comision: 0, transferido: 0 };
+    r.pagos += 1;
+    r.cobrado += Number(p.monto);
+    r.comision += Number(p.montoComision);
+    if (p.transferencia?.estado === "ENVIADA") r.transferido += Number(p.monto) - Number(p.montoComision);
+    deMes.set(u.id, r);
+    porMes.set(mes, deMes);
+  }
   const nombre = new Map(retenido.map((r) => [r.proyectoId, r.proyecto]));
 
   const total = (k: "bruto" | "comision" | "neto" | "pagos") => retenido.reduce((a, r) => a + r[k], 0);
@@ -116,6 +147,42 @@ export default async function TransferenciasPage() {
             ))}
           </ol>
         )}
+      </section>
+
+      <section className="bo-seccion">
+        <div className="bo-seccion-t">
+          <h2>Por mes y por unidad</h2>
+          <span>Lo cobrado de cada venta, la comisión y lo que le toca a Moretti</span>
+        </div>
+        {porMes.size === 0 ? <p className="note">Todavía no hay cobros.</p> : [...porMes].map(([mes, deMes]) => {
+          const filas = [...deMes.values()].sort((a, b) => a.unidad.localeCompare(b.unidad));
+          const suma = (k: "cobrado" | "comision" | "transferido") => filas.reduce((a, f) => a + f[k], 0);
+          return (
+            <details key={mes} className="bo-plegable" open={mes === [...porMes.keys()][0]}>
+              <summary>
+                <span>{MESES[Number(mes.slice(5)) - 1]} {mes.slice(0, 4)}</span>
+                <small>{filas.length} {filas.length === 1 ? "unidad" : "unidades"} · a Moretti <Money valor={suma("cobrado") - suma("comision")} conCentavos /></small>
+              </summary>
+              <div className="overflow-x-auto">
+                <table className="tbl">
+                  <thead><tr><th>Unidad</th><th className="r">Pagos</th><th className="r">Cobrado</th><th className="r">Comisión</th><th className="r">A Moretti</th><th className="r">Transferido</th></tr></thead>
+                  <tbody>
+                    {filas.map((f) => (
+                      <tr key={f.unidadId}>
+                        <td><Link href={`/admin/obra?u=${f.unidadId}`} className="btn btn-sm btn-ghost">{f.unidad}</Link></td>
+                        <td className="r">{f.pagos}</td>
+                        <td className="r"><Money valor={f.cobrado} conCentavos /></td>
+                        <td className="r text-ink-2"><Money valor={f.comision} conCentavos /></td>
+                        <td className="r font-semibold"><Money valor={f.cobrado - f.comision} conCentavos /></td>
+                        <td className="r">{f.transferido > 0 ? <Money valor={f.transferido} conCentavos /> : <span className="chip wait">Retenido</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          );
+        })}
       </section>
     </div>
   );

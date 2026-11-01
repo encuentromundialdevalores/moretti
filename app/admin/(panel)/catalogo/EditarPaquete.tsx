@@ -14,6 +14,7 @@ export default function EditarPaquete({
   const [abierto, setAbierto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [renglones, setRenglones] = useState<string[]>(paquete.partidas.length ? paquete.partidas : [""]);
 
   async function guardar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -26,10 +27,7 @@ export default function EditarPaquete({
       body: JSON.stringify({
         nombre: f.get("nombre"),
         descripcion: f.get("descripcion"),
-        partidas: String(f.get("partidas") ?? "")
-          .split("\n")
-          .map((p) => p.trim())
-          .filter(Boolean),
+        partidas: renglones.map((p) => p.trim()).filter(Boolean),
         imagen: f.get("imagen") || null,
       }),
     });
@@ -66,9 +64,17 @@ export default function EditarPaquete({
       </div>
       <div className="field">
         <label htmlFor={`partidas-${paquete.id}`}>{paquete.esArmable ? "Lo que se puede elegir" : "Lo que agrega este paquete"}</label>
-        <textarea id={`partidas-${paquete.id}`} name="partidas" rows={4} defaultValue={paquete.partidas.join("\n")} placeholder={"Ej.\nClima en sala y recámaras\nMueble de TV"} />
+        <div id={`partidas-${paquete.id}`} className="flex flex-col gap-2">
+          {renglones.map((t, i) => (
+            <div key={i} className="pq-par" style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}>
+              <input aria-label={`Renglón ${i + 1}`} value={t} onChange={(e) => setRenglones(renglones.map((x, k) => (k === i ? e.target.value : x)))} placeholder="Ej. Clima en sala y recámaras" />
+              <button type="button" className="pq-quitar" aria-label="Quitar renglón" onClick={() => setRenglones(renglones.filter((_, k) => k !== i))}>×</button>
+            </div>
+          ))}
+          <button type="button" className="pq-agregar" onClick={() => setRenglones([...renglones, ""])}>+ Agregar renglón</button>
+        </div>
         <p className="ayuda">
-          Un renglón por línea. {paquete.esArmable ? "" : "Sólo lo nuevo: lo de los paquetes anteriores se muestra solo. "}
+          Un renglón por cosa. {paquete.esArmable ? "" : "Sólo lo nuevo: lo de los paquetes anteriores se muestra solo. "}
           Es texto de la tarjeta; lo que se cotiza sale del catálogo de partidas.
         </p>
       </div>

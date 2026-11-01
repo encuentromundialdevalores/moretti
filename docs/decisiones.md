@@ -706,3 +706,47 @@ fechas de otro perfil se ven pero no se cambian; día uno cambia todas. Las
 unidades de antes cuentan como cumplidas las fases por las que ya pasaron.
 El verificador ya no tiene la pantalla «Por recibir»: el acta se firma en
 el pop-up de la unidad.
+
+## D-53 · Facturas de Moretti: complemento de pago y comisión (por ratificar)
+
+Cada pago se factura en parcialidades (PPD). Por cada pago nacen dos
+pendientes, en la misma transacción del cobro:
+
+- el **complemento de pago** que Moretti emite para el comprador;
+- la **factura de comisión** que Moretti le hace a día uno, por la
+  comisión del pago (`Pago.montoComision`, hoy 15 %) más 16 % de IVA.
+
+Moretti sube el XML y el PDF de cada uno, en el orden que quiera. Con el
+XML (o el folio escrito a mano) queda emitida. El XML no se cambia después;
+el PDF sí. Cada archivo guarda quién lo subió. Los archivos viven en la base
+(PDF de máximo 2 MB) para no depender de un almacén externo en Vercel.
+
+En su pantalla, Moretti ve **sólo los cobros del mes**. Lo anterior aparece
+en el detalle de cada unidad. El comprador descarga sus complementos y
+nunca ve la factura de comisión. Fiscal del back office va mes por mes y
+por unidad. A los pagos que ya existían se les creó su factura de comisión
+en la migración.
+
+## D-54 · Conversación por unidad y avisos automáticos (por ratificar)
+
+Cada unidad tiene su conversación en el pop-up, entre día uno, Moretti y el
+verificador. El sistema avisa solo al resto del equipo cuando alguien:
+
+- pone o quita una fecha;
+- cumple una fase;
+- escribe una observación o un mensaje;
+- sube una factura.
+
+A día uno también le avisa cuando nace una cuenta de comprador. Los avisos
+van a un perfil completo y cada persona lleva su propia cuenta de lo que ya
+vio: el contador del menú se reinicia al abrir «Avisos». Todavía no salen
+por correo ni WhatsApp.
+
+## D-55 · La cuenta del comprador nace con su anticipo (por ratificar)
+
+Al cobrarse el anticipo, si el contacto del comprador es un correo y no
+tiene cuenta, se crea su cuenta de portal sin contraseña. Día uno le manda
+la liga desde Usuarios, donde aparece como «Sin invitar». Si el contacto no
+es un correo, sólo se avisa a día uno. El enganche vive en
+`crearPendienteFiscal`, dentro de la transacción del cobro: el flujo de
+Stripe no cambió.
