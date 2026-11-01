@@ -5,7 +5,6 @@
  * verdad deciden siguen en lib/motor/operacion.ts.
  */
 
-import type { EstadoFinanciero } from "@prisma/client";
 import type { EstadoInstalacion, EstadoOperativo } from "./motor/operacion";
 
 export const ETAPAS = ["Medición", "Acabados", "Fabricación", "Instalación", "Entrega"] as const;
@@ -34,32 +33,6 @@ export function queSigueParaComprador(op: EstadoOperativo, ins: EstadoInstalacio
     case 4: return { titulo: "Ya está instalado", texto: "Falta recibirlo: el verificador lo revisa contigo y firman el acta." };
     default: return { titulo: "Entregado", texto: "Tu departamento ya está equipado. Tu garantía corre desde el día de la entrega." };
   }
-}
-
-export type TareaMoretti =
-  | { tipo: "hacer"; campo: "operativo" | "instalacion"; hacia: EstadoOperativo | EstadoInstalacion; texto: string }
-  | { tipo: "esperar"; porque: string }
-  | { tipo: "lista" };
-
-/** Para Moretti: el botón que le toca o por qué no le toca nada todavía. */
-export function tareaMoretti(op: EstadoOperativo, ins: EstadoInstalacion, fin: EstadoFinanciero): TareaMoretti {
-  if (ins === "ENTREGADA") return { tipo: "lista" };
-  if (fin === "SUSPENDIDO") return { tipo: "esperar", porque: "En pausa: el comprador va atrasado en sus pagos." };
-  if (fin === "CANCELADO") return { tipo: "esperar", porque: "La venta se canceló." };
-  switch (op) {
-    case "PENDIENTE": return { tipo: "esperar", porque: "Falta que el verificador mida." };
-    case "LEVANTAMIENTO_HECHO": return { tipo: "esperar", porque: "Falta confirmar los acabados." };
-    case "ACABADOS_ELEGIDOS":
-      return fin === "LIQUIDADO"
-        ? { tipo: "hacer", campo: "operativo", hacia: "EN_PRODUCCION", texto: "Empezar a producir" }
-        : { tipo: "esperar", porque: "Falta que el comprador termine de pagar." };
-    case "EN_PRODUCCION": return { tipo: "hacer", campo: "operativo", hacia: "PRODUCIDO", texto: "Ya está producido" };
-    case "PRODUCIDO": return { tipo: "hacer", campo: "operativo", hacia: "EN_ALMACEN", texto: "Ya está en almacén" };
-  }
-  // EN_ALMACEN: lo que sigue es la instalación.
-  if (ins === "NO_PROGRAMADA") return { tipo: "esperar", porque: "día uno programa la fecha de instalación." };
-  if (ins === "PROGRAMADA") return { tipo: "hacer", campo: "instalacion", hacia: "INSTALADA", texto: "Ya quedó instalado" };
-  return { tipo: "esperar", porque: "Falta que el verificador lo reciba." };
 }
 
 /** Para PISSA: quién entra a la unidad, si alguien tiene que entrar. */

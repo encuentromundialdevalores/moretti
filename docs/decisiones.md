@@ -692,3 +692,17 @@ elegidos y Programada. Las reglas del motor (R5, R6, acta) siguen mandando.
 
 `npm run db:usuarios-prueba` crea una por perfil con la contraseña
 `prueba-dia-uno-2026`. No corre en producción.
+
+## D-52 · Seis fases de obra con fecha y responsable (por ratificar)
+
+Pedido de Ana Cris (31 oct). La obra se sigue en 6 fases: medición,
+revisión del pedido, pedido a fábrica, llegada del pedido, instalación y
+revisión de la instalación. Moretti tiene el pedido y la instalación; el
+verificador, las otras cuatro. Cada fase tiene una fecha estimada y se
+marca cumplida, en orden. Cumplir una fase mueve la unidad por los estados
+de siempre (`lib/fases.ts`), así que las reglas siguen igual: el pedido
+pide la unidad liquidada y la revisión de la instalación pide el acta. Las
+fechas de otro perfil se ven pero no se cambian; día uno cambia todas. Las
+unidades de antes cuentan como cumplidas las fases por las que ya pasaron.
+El verificador ya no tiene la pantalla «Por recibir»: el acta se firma en
+el pop-up de la unidad.

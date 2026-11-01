@@ -38,11 +38,12 @@ export const PANTALLAS: Record<Exclude<Rol, "ADMIN">, Pantalla[]> = {
   ],
   MORETTI: [
     { href: "/portal/moretti", texto: "Mis unidades" },
+    { href: "/portal/moretti/calendario", texto: "Calendario" },
     { href: "/portal/moretti/fiscal", texto: "Facturas por subir" },
   ],
   VERIFICADOR: [
-    { href: "/portal/verificador", texto: "Por medir" },
-    { href: "/portal/verificador/instalaciones", texto: "Por recibir" },
+    { href: "/portal/verificador", texto: "Mis unidades" },
+    { href: "/portal/verificador/calendario", texto: "Calendario" },
   ],
   DESARROLLADOR: [
     { href: "/portal/pissa", texto: "Unidades con paquete" },

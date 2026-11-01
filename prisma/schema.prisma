@@ -175,6 +175,8 @@ model Unidad {
   comprador         Comprador?
   contrato          Contrato?
   actaEntrega       ActaEntrega?
+  fases             FaseUnidad[]
+  observaciones     ObservacionUnidad[]
   createdAt         DateTime          @default(now())
 
   @@unique([proyectoId, torre, numero])
@@ -678,4 +680,45 @@ model Usuario {
   invitacionVence   DateTime?
   ultimoAcceso      DateTime?
   createdAt         DateTime       @default(now())
+}
+
+/// Las 6 fases de obra de una unidad (Sprint 5, D-52). Cada una tiene un
+/// responsable fijo (lib/fases.ts): el verificador o Moretti.
+enum Fase {
+  MEDICION
+  REVISION_PEDIDO
+  PEDIDO
+  LLEGADA_PEDIDO
+  INSTALACION
+  REVISION_INSTALACION
+}
+
+/// Fecha estimada y cumplimiento de una fase. Se crea la primera vez que
+/// alguien le pone fecha o la marca.
+model FaseUnidad {
+  id            String    @id @default(cuid())
+  unidad        Unidad    @relation(fields: [unidadId], references: [id])
+  unidadId      String
+  fase          Fase
+  fechaEstimada DateTime?
+  cumplidaEn    DateTime?
+  cumplidaPor   String?
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([unidadId, fase])
+  @@index([fechaEstimada])
+}
+
+/// Lo que anotan Moretti, el verificador o día uno sobre una unidad. No se edita ni se borra.
+model ObservacionUnidad {
+  id        String   @id @default(cuid())
+  unidad    Unidad   @relation(fields: [unidadId], references: [id])
+  unidadId  String
+  fase      Fase?
+  texto     String
+  autor     String
+  rol       Rol
+  createdAt DateTime @default(now())
+
+  @@index([unidadId, createdAt])
 }

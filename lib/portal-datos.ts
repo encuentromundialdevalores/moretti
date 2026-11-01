@@ -138,3 +138,70 @@ export async function comprobantesDelPlan(planId: string) {
     orderBy: { fechaCobro: "asc" },
   });
 }
+
+/**
+ * Todo lo de una unidad vendida para el pop-up de Moretti, el verificador y
+ * día uno: paquete, fases, observaciones y los documentos de ese cliente.
+ * Sin montos del plan ni comisión.
+ */
+export async function detalleUnidad(unidadId: string) {
+  return prisma.unidad.findFirst({
+    where: { id: unidadId, ...unidadVendida },
+    select: {
+      ...datosUnidad,
+      estadoFinanciero: true,
+      prototipo: { select: { clave: true, recamaras: true, superficie: true } },
+      contrato: { select: { fechaFirma: true, archivoNombre: true, quienFirmo: true } },
+      actaEntrega: { select: { fechaFirma: true, archivoNombre: true, quienFirmo: true } },
+      fases: { select: { fase: true, fechaEstimada: true, cumplidaEn: true, cumplidaPor: true } },
+      observaciones: { select: { id: true, fase: true, texto: true, autor: true, rol: true, createdAt: true }, orderBy: { createdAt: "desc" } },
+      comprador: {
+        select: {
+          nombre: true,
+          folio: true,
+          planes: {
+            where: { estado: { in: VENDIDO } },
+            take: 1,
+            select: {
+              id: true,
+              paquete: { select: { nombre: true } },
+              renglones: { select: { cantidad: true, acabado: true, partida: { select: { nombre: true } } }, orderBy: { partida: { orden: "asc" } } },
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+/** Comprobantes de un plan para el detalle de la unidad (con o sin XML). */
+export async function comprobantesDeUnidad(planId: string) {
+  return prisma.comprobanteFiscal.findMany({
+    where: { planId },
+    select: { id: true, fechaCobro: true, estado: true, folioFiscal: true, xmlNombre: true },
+    orderBy: { fechaCobro: "asc" },
+  });
+}
+
+/** Las fechas de todas las fases en un rango, para el calendario. */
+export async function fechasDeFases(desde: Date, hasta: Date) {
+  return prisma.faseUnidad.findMany({
+    where: { fechaEstimada: { gte: desde, lt: hasta }, unidad: unidadVendida },
+    select: { fase: true, fechaEstimada: true, cumplidaEn: true, unidad: { select: { id: true, torre: true, numero: true, proyecto: { select: { nombre: true } } } } },
+    orderBy: { fechaEstimada: "asc" },
+  });
+}
+
+/** Unidades vendidas con sus fases, para las listas de Moretti y el verificador. */
+export async function unidadesConFases() {
+  return prisma.unidad.findMany({
+    where: unidadVendida,
+    select: {
+      ...datosUnidad,
+      estadoFinanciero: true,
+      fases: { select: { fase: true, fechaEstimada: true, cumplidaEn: true, cumplidaPor: true } },
+      comprador: { select: paqueteVendido },
+    },
+    orderBy: [{ proyecto: { nombre: "asc" } }, { torre: "asc" }, { numero: "asc" }],
+  });
+}
