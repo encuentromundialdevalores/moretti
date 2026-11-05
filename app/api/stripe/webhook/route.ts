@@ -11,6 +11,7 @@ import {
 } from "@/lib/motor/planes";
 import { cerrarDisputa, registrarDisputa, registrarReembolso } from "@/lib/motor/movimientos";
 import { describirTarjeta } from "@/lib/pasarela/stripe-respuestas";
+import { modoStripe } from "@/lib/pasarela/modo";
 
 /**
  * Webhook de Stripe (S1-10). Un solo endpoint (la lista de eventos, para
@@ -43,10 +44,11 @@ const secretos = [process.env.STRIPE_WEBHOOK_SECRET].filter(
 const PLATAFORMA = "plataforma";
 
 export async function POST(request: NextRequest) {
-  const llave = process.env.STRIPE_SECRET_KEY;
-  if (!llave?.startsWith("sk_test_") || secretos.length === 0) {
-    return NextResponse.json({ error: "Webhook de Stripe sin configurar (modo prueba)." }, { status: 500 });
+  const modo = modoStripe();
+  if (modo === "apagado" || secretos.length === 0) {
+    return NextResponse.json({ error: "Webhook de Stripe sin configurar." }, { status: 500 });
   }
+  const llave = process.env.STRIPE_SECRET_KEY!.trim();
 
   const firma = request.headers.get("stripe-signature");
   if (!firma) return NextResponse.json({ error: "Falta la firma de Stripe." }, { status: 400 });
@@ -56,8 +58,16 @@ export async function POST(request: NextRequest) {
   const api = new Stripe(llave);
   const event = verificar(api, crudo, firma);
   if (!event) return NextResponse.json({ error: "Firma de Stripe inválida." }, { status: 400 });
-  if (event.livemode) {
-    return NextResponse.json({ error: "Este prototipo sólo acepta eventos de modo prueba." }, { status: 400 });
+  // Un evento real sólo con el modo real encendido (D-44, D-56), y viceversa.
+  if (event.livemode !== (modo === "real")) {
+    return NextResponse.json(
+      {
+        error: event.livemode
+          ? "Este ambiente sólo acepta eventos de modo prueba (falta STRIPE_MODO_REAL=1)."
+          : "El modo real está encendido: no se aceptan eventos de prueba.",
+      },
+      { status: 400 }
+    );
   }
 
   const cuenta = event.account ?? null;

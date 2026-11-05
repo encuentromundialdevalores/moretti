@@ -64,7 +64,8 @@ function cobrables(ahora: Date): Prisma.ExhibicionWhereInput {
 }
 
 export async function cobrarVencidas(
-  opciones: { ahora?: Date; limite?: number; pasarela?: Pasarela } = {}
+  /** `proyectoId`: sólo ese proyecto (la prueba con dinero real); sin él, todos. */
+  opciones: { ahora?: Date; limite?: number; pasarela?: Pasarela; proyectoId?: string } = {}
 ): Promise<ResultadoBarrido> {
   const ahora = opciones.ahora ?? new Date();
   const resultado: ResultadoBarrido = {
@@ -77,8 +78,11 @@ export async function cobrarVencidas(
     pendientesSinConfirmar: [],
   };
 
+  const delProyecto: Prisma.ExhibicionWhereInput = opciones.proyectoId
+    ? { plan: { comprador: { unidad: { proyectoId: opciones.proyectoId } } } }
+    : {};
   const candidatas = await prisma.exhibicion.findMany({
-    where: { AND: [libre(ahora), cobrables(ahora)] },
+    where: { AND: [libre(ahora), cobrables(ahora), delProyecto] },
     orderBy: [{ fechaProgramada: "asc" }, { numero: "asc" }],
     take: opciones.limite ?? 200,
     select: { id: true, planId: true, numero: true },

@@ -1,9 +1,11 @@
+import Link from "next/link";
+import { connection } from "next/server";
 import { PageHead } from "@/components/ui";
+import { cobroEnLinea, modoStripe, porQueApagado } from "@/lib/pasarela/modo";
 
-export default function PruebaPagosPage() {
-  const tieneLlavePublica =
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_") ?? false;
-  const tieneLlaveSecreta = process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") ?? false;
+export default async function PruebaPagosPage() {
+  await connection();
+  const modoReal = modoStripe() === "real";
   const tieneWebhook = Boolean(process.env.STRIPE_WEBHOOK_SECRET);
 
   return (
@@ -12,13 +14,18 @@ export default function PruebaPagosPage() {
         eyebrow="Stripe · ambiente de pruebas"
         titulo="Prueba desde un plan"
         descripcion="El anticipo se cobra desde el detalle de un plan con contrato firmado, a la cuenta conectada de su proyecto."
-        accion={<span className="chip info">Sólo modo prueba</span>}
+        accion={<span className={`chip ${modoReal ? "late" : "info"}`}>{modoReal ? "Modo real" : "Modo prueba"}</span>}
       />
 
-      {!tieneLlavePublica || !tieneLlaveSecreta ? (
+      {modoReal ? (
         <p className="note blocked" role="status">
-          Configuración pendiente: añade una llave publicable <code>pk_test_</code> y una llave
-          secreta <code>sk_test_</code>. Sin ellas el motor cobra con la pasarela falsa.
+          Llaves reales con <code>STRIPE_MODO_REAL=1</code>: el motor cobra dinero real. Las tarjetas de
+          prueba de abajo no funcionan en este modo.
+        </p>
+      ) : !cobroEnLinea() ? (
+        <p className="note blocked" role="status">
+          Configuración pendiente. {porQueApagado() ?? "Falta la llave publicable."} Mientras tanto, el
+          motor no cobra con Stripe desde el navegador.
         </p>
       ) : (
         <p className="note" role="status">
@@ -50,6 +57,10 @@ export default function PruebaPagosPage() {
           <li>Las mensualidades se cobran desde el estado de cuenta, a la tarjeta guardada.</li>
         </ol>
       </div>
+
+      <Link href="/admin/pagos/dinero-real" className="text-[14px] font-semibold text-accent hover:underline">
+        Casos de la prueba con dinero real →
+      </Link>
     </div>
   );
 }

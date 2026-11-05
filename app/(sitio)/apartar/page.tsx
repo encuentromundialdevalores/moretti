@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cargarCatalogosPorProyecto } from "@/lib/motor/catalogo";
+import { cobroEnLinea } from "@/lib/pasarela/modo";
 import Apartado from "./Apartado";
 
 export const metadata = { title: "Aparta tu paquete · día uno" };
@@ -62,10 +63,7 @@ export default async function ApartarPage({
       }
       canasta={esArmable ? leerCanasta(q.canasta) : undefined}
       unidades={unidades}
-      stripeTestConfigurado={
-        process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") === true &&
-        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_") === true
-      }
+      stripeTestConfigurado={cobroEnLinea()}
     />
   );
 }

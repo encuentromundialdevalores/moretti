@@ -750,3 +750,20 @@ la liga desde Usuarios, donde aparece como «Sin invitar». Si el contacto no
 es un correo, sólo se avisa a día uno. El enganche vive en
 `crearPendienteFiscal`, dentro de la transacción del cobro: el flujo de
 Stripe no cambió.
+## D-56 · Modo real con bandera y tope, y la página de la prueba
+
+- **Fecha / quién:** 26 oct · Charly; hecho por Claude. **Por ratificar con
+  Ethan** (D-44 pedía decidirlo juntos).
+- **Decisión:** `lib/pasarela/modo.ts` es el único lugar que decide las
+  llaves. Las reales (`pk_live_` + `sk_live_`/`rk_live_`) sólo funcionan con
+  `STRIPE_MODO_REAL=1`; sin la bandera el motor usa la pasarela falsa y el
+  webhook no acepta nada. En modo real ningún cobro ni transferencia pasa de
+  `STRIPE_TOPE_CENTAVOS` ($300 por defecto), y el webhook sólo acepta eventos
+  del mismo modo que las llaves. En los dos modos un cobro menor a $10 MXN se
+  frena antes de Stripe (antes llegaba como `amount_too_small` y el motor lo
+  tomaba por «la pasarela no respondió»).
+- **La prueba:** `/admin/pagos/dinero-real` arma un proyecto aparte, «Prueba
+  real» ($10 por cobro, seis planes con contrato), y guía cada caso. Su ruta
+  (`/api/pruebas/dinero-real`) sólo toca ese proyecto: adelantar la fecha de
+  una mensualidad (queda en la bitácora) y correr el barrido filtrado por
+  proyecto (`cobrarVencidas({ proyectoId })`).

@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { prisma } from "../prisma";
-import { ReglaError } from "../motor/errores";
+import { ReglaError, mxc } from "../motor/errores";
+import { MINIMO_STRIPE_CENTAVOS, modoStripe, porQueApagado, topeCentavos } from "./modo";
 import {
   llaveIdempotencia,
   llaveReembolso,
@@ -32,7 +33,8 @@ import { describirTarjeta, interpretarErrorStripe, interpretarPaymentIntent } fr
  * - Los montos ya llegan en centavos enteros: no se multiplica nada.
  * - La llave es `llaveIdempotencia(solicitud)`. Stripe recuerda también los
  *   rechazos, por eso el intento va en la llave.
- * - Sólo modo prueba: sin `sk_test_` no se inicializa.
+ * - Las llaves las decide ./modo.ts: prueba como siempre; real sólo con
+ *   `STRIPE_MODO_REAL=1` y con tope por cobro (D-56).
  * - Integración del 11 oct: el código de Charly (rama charly-backend-final)
  *   hacía cargos directos en la cuenta de Moretti; se pasó a D-34 sin
  *   cambiar el contrato.
@@ -59,12 +61,26 @@ export function metodoCaptura(env: Record<string, string | undefined> = process.
 let cliente: Stripe | null = null;
 
 function stripe(): Stripe {
-  const llave = process.env.STRIPE_SECRET_KEY;
-  if (!llave?.startsWith("sk_test_")) {
-    throw new ReglaError("Stripe no está configurado: falta una llave secreta de prueba (sk_test_).");
+  if (modoStripe() === "apagado") {
+    throw new ReglaError(`Stripe no está configurado. ${porQueApagado()}`);
   }
-  cliente ??= new Stripe(llave);
+  cliente ??= new Stripe(process.env.STRIPE_SECRET_KEY!.trim());
   return cliente;
+}
+
+/** Antes de llamar a Stripe: ni debajo del mínimo ni, en modo real, arriba del tope. */
+function revisarMonto(centavos: number, que: string) {
+  if (centavos < MINIMO_STRIPE_CENTAVOS) {
+    throw new ReglaError(
+      `No se cobra ${mxc(centavos / 100)}: Stripe no acepta ${que} menores a ${mxc(MINIMO_STRIPE_CENTAVOS / 100)} MXN.`
+    );
+  }
+  const tope = topeCentavos();
+  if (tope !== null && centavos > tope) {
+    throw new ReglaError(
+      `Modo real: ${que} de ${mxc(centavos / 100)} pasa del tope de ${mxc(tope / 100)} (STRIPE_TOPE_CENTAVOS). No se llamó a Stripe.`
+    );
+  }
 }
 
 async function cuentaDelProyecto(proyectoId: string): Promise<string> {
@@ -96,6 +112,7 @@ export const pasarelaStripe: Pasarela = {
     }
 
     const api = stripe();
+    revisarMonto(s.montoCentavos, "cobros");
     const llave = llaveIdempotencia(s);
     try {
       // D-34: el cargo es en la plataforma, con la tarjeta que ya vive ahí.
@@ -245,6 +262,10 @@ export const pasarelaStripe: Pasarela = {
 
   async transferir(s: SolicitudTransferencia): Promise<ResultadoTransferencia> {
     const cuenta = await cuentaDelProyecto(s.proyectoId);
+    const tope = topeCentavos();
+    if (tope !== null && s.montoCentavos > tope) {
+      return { estado: "fallido", mensaje: `modo real: ${mxc(s.montoCentavos / 100)} pasa del tope de ${mxc(tope / 100)}` };
+    }
     try {
       const transfer = await stripe().transfers.create(
         {

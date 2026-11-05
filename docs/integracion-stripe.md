@@ -182,9 +182,10 @@ Un evento de una cuenta conectada se ignora con una nota.
 | Variable | Para qué | Dónde se saca |
 |---|---|---|
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Elements en el navegador | Dashboard › Developers › API keys · `pk_test_…` |
-| `STRIPE_SECRET_KEY` | Todo lo del servidor. **Sólo `sk_test_`**. | Igual · `sk_test_…` |
+| `STRIPE_SECRET_KEY` | Todo lo del servidor. `sk_test_`; las reales sólo con `STRIPE_MODO_REAL=1` (D-56). | Igual · `sk_test_…` |
 | `STRIPE_WEBHOOK_SECRET` | Firma de los eventos de la plataforma (o de todos, con `stripe listen`) | `stripe listen` o el endpoint del Dashboard · `whsec_…` |
 | `STRIPE_CAPTURE_METHOD` | `automatic` (por defecto) o `manual` para el anticipo. Decisión legal pendiente. | — |
+| `STRIPE_MODO_REAL` · `STRIPE_TOPE_CENTAVOS` | Enciende las llaves reales y fija el tope por cobro (por defecto 30000 = $300). Sólo para la prueba con dinero real (D-56). | — |
 | `CRON_SECRET` | Protege `/api/cobranza/barrido`. Mínimo 16 caracteres. | `openssl rand -hex 32` |
 | `COBRANZA_VENCIDAS_SUSPENDEN` | Vencidas que suspenden el plan (por defecto 2) | Contrato |
 | `STRIPE_E2E_CUENTA` | La cuenta conectada (destino de la transferencia) que usa `npm run test:stripe` | La `acct_…` de prueba de Moretti |

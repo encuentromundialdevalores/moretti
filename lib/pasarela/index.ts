@@ -1,6 +1,7 @@
 import type { Pasarela } from "./contrato";
 import { pasarelaFalsa } from "./falsa";
 import { pasarelaStripe } from "./stripe";
+import { modoStripe } from "./modo";
 
 /**
  * Único lugar del repo donde se decide qué pasarela usa el motor.
@@ -8,13 +9,13 @@ import { pasarelaStripe } from "./stripe";
  * "./stripe" directamente. (Las pruebas y el seed sí crean su propia
  * pasarela falsa y se la pasan al motor.)
  *
- * Con una llave secreta de prueba (sk_test_) en el entorno se cobra con
- * Stripe; sin ella, con la falsa, para que el prototipo siga corriendo en
- * una máquina sin llaves. Llaves de producción: no se aceptan todavía.
+ * Con llaves de prueba, o reales con STRIPE_MODO_REAL=1 (./modo.ts), se
+ * cobra con Stripe; si no, con la falsa, para que el prototipo siga
+ * corriendo en una máquina sin llaves.
  */
-export const pasarela: Pasarela = process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")
-  ? pasarelaStripe
-  : pasarelaFalsa;
+export const pasarela: Pasarela = modoStripe() === "apagado" ? pasarelaFalsa : pasarelaStripe;
+
+export { modoStripe, porQueApagado, topeCentavos, MINIMO_STRIPE_CENTAVOS } from "./modo";
 
 export type {
   Pasarela,

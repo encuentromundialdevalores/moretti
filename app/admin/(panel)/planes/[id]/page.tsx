@@ -21,6 +21,7 @@ import { conceptoExhibicion } from "@/lib/motor/recalculo";
 import { versionesDelPlan } from "@/lib/motor/versiones";
 import { cargarCatalogo } from "@/lib/motor/catalogo";
 import { bloqueoPorLevantamiento } from "@/lib/motor/operacion";
+import { cobroEnLinea } from "@/lib/pasarela/modo";
 
 const FAMILIA = { A_LA_MEDIDA: "A la medida", DE_CATALOGO: "De catálogo", VALE: "Vale" } as const;
 
@@ -98,10 +99,8 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   const congelado = Boolean(plan.fechaCongelamiento);
   const siguiente = plan.exhibiciones.find((e) => e.estado !== EstadoExhibicion.PAGADA);
   const cobrable = plan.estado !== EstadoPlan.LIQUIDADO && plan.estado !== EstadoPlan.CANCELADO;
-  // Sin llaves de prueba el motor usa la pasarela falsa (lib/pasarela/index.ts).
-  const stripeTestConfigurado =
-    process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") === true &&
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_") === true;
+  // Sin llaves (o reales sin STRIPE_MODO_REAL) el motor usa la pasarela falsa (lib/pasarela/modo.ts).
+  const stripeTestConfigurado = cobroEnLinea();
   const tarjetaRegistrada = Boolean(plan.comprador.stripePaymentMethodId);
 
   return (

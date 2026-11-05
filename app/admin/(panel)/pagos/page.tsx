@@ -4,6 +4,7 @@ import { EstadoExhibicion, EstadoPlan } from "@prisma/client";
 import { connection } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PageHead, Money } from "@/components/ui";
+import { cobroEnLinea, modoStripe } from "@/lib/pasarela/modo";
 import { EstadoPago } from "@prisma/client";
 
 type MovimientoReal = {
@@ -91,9 +92,8 @@ export default async function PagosPage({
   const neto = bruto - comision;
   const visibles = movimientos.filter((m) => pasaFiltro(m, filtro));
   const pct = (n: number) => (bruto > 0 ? (n / bruto) * 100 : 0);
-  const stripeConfigurado =
-    process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") &&
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_");
+  const stripeConfigurado = cobroEnLinea();
+  const modoReal = modoStripe() === "real";
 
   return (
     <div className="flex flex-col gap-10">
@@ -101,7 +101,11 @@ export default async function PagosPage({
         eyebrow="Pagos · Stripe"
         titulo="Lo que entró y lo que viene."
         descripcion="Movimientos confirmados por el servidor y próximas exhibiciones de los planes."
-        accion={<span className={`chip ${stripeConfigurado ? "info" : "wait"}`}>{stripeConfigurado ? "Modo prueba" : "Configuración de Stripe pendiente"}</span>}
+        accion={
+          <span className={`chip ${modoReal ? "late" : stripeConfigurado ? "info" : "wait"}`}>
+            {modoReal ? "Modo real" : stripeConfigurado ? "Modo prueba" : "Configuración de Stripe pendiente"}
+          </span>
+        }
       />
 
       {!stripeConfigurado && (

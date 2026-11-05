@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cobrarAnticipo, PasarelaError, ReglaError } from "@/lib/motor/planes";
 import { sinPermisoTarjeta } from "@/app/api/planes/[id]/tarjeta/permiso";
+import { modoStripe } from "@/lib/pasarela/modo";
 
 /**
  * Cobra el anticipo de un plan recién apartado desde el sitio.
@@ -18,7 +19,7 @@ import { sinPermisoTarjeta } from "@/app/api/planes/[id]/tarjeta/permiso";
 export async function POST(req: NextRequest) {
   const { planId } = (await req.json().catch(() => ({}))) as { planId?: string };
   if (!planId) return NextResponse.json({ error: "Falta el plan." }, { status: 400 });
-  if (!process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_")) {
+  if (modoStripe() === "apagado") {
     return NextResponse.json({ error: "El cobro en línea no está disponible en este ambiente." }, { status: 503 });
   }
   const bloqueo = await sinPermisoTarjeta(req, planId);

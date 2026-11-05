@@ -14,6 +14,8 @@ import {
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
 const LLAVE_DE_PRUEBA = PUBLIC_KEY.startsWith("pk_test_");
+// La real sólo llega a usarse si el servidor dice que el modo real está encendido (lib/pasarela/modo.ts).
+const LLAVE_VALIDA = LLAVE_DE_PRUEBA || PUBLIC_KEY.startsWith("pk_live_");
 
 // La tarjeta se captura en la plataforma (D-02), sin cuenta conectada.
 let plataforma: Promise<Stripe | null> | null = null;
@@ -58,7 +60,7 @@ export default function CobrarConStripe({
   onPagado?: () => void;
 }) {
   const router = useRouter();
-  const configurado = stripeTestConfigurado && LLAVE_DE_PRUEBA;
+  const configurado = stripeTestConfigurado && LLAVE_VALIDA;
   const [fase, setFase] = useState<Fase>({ id: "inicio" });
   const [consentimiento, setConsentimiento] = useState(false);
   const [tarjeta, setTarjeta] = useState(tarjetaRegistrada);
@@ -152,7 +154,7 @@ export default function CobrarConStripe({
   if (!configurado) {
     return (
       <p className="text-xs text-ink-2" role="status">
-        Configuración de Stripe de prueba pendiente (pk_test_ y sk_test_). No se habilitan cobros.
+        Configuración de Stripe pendiente (llaves de prueba, o reales con STRIPE_MODO_REAL=1). No se habilitan cobros.
       </p>
     );
   }
@@ -305,9 +307,11 @@ function FormularioTarjeta({
       <div className="rounded-[var(--r-input)] border border-line-2 bg-surface p-4">
         <PaymentElement options={{ layout: "tabs" }} />
       </div>
-      <p className="text-[11px] text-muted">
-        Prueba: 4242 4242 4242 4242 · con autenticación 4000 0025 0000 3155 · fondos insuficientes 4000 0000 0000 9995
-      </p>
+      {LLAVE_DE_PRUEBA && (
+        <p className="text-[11px] text-muted">
+          Prueba: 4242 4242 4242 4242 · con autenticación 4000 0025 0000 3155 · fondos insuficientes 4000 0000 0000 9995
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn btn-sm" disabled={!stripe || enviando}>
           {enviando ? "Guardando…" : "Guardar tarjeta y pagar anticipo"}
